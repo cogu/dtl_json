@@ -36,7 +36,7 @@ Type mapping is straightforward between JSON and DTL.
 
 The API is simple and is inspired by the JSON module found in Python.
 
-** `int32_t dtl_json_dump(dtl_v_t *dv, FILE *fh, int32_t indent, bool sortKeys)` **
+**`int32_t dtl_json_dump(dtl_v_t *dv, FILE *fh, int32_t indent, bool sortKeys)`**
 
 Writes the dynamic value (dv) to the file fh. The file must have already been openend for writing.
 
@@ -46,20 +46,20 @@ If sortKeys is true it will alphabetically sort object keys before they are writ
 
 The caller is also responsible for closing the openend file upon the return of this function.
 
-** `adt_str_t* dtl_json_dumps(const dtl_dv_t *dv, int32_t indent, bool sortKeys)` **
+**`adt_str_t* dtl_json_dumps(const dtl_dv_t *dv, int32_t indent, bool sortKeys)`**
 
 Writes the dynamic value (dv) to a string which is returned by the function. The caller is responsible for deleting the string when it's no longer needed.
 
 Remaining arguments are the same as above
 
-** `dtl_dv_t* dtl_json_load(FILE *fh)` **
+**`dtl_dv_t* dtl_json_load(FILE *fh)`**
 
 Parses the JSON document from the file in fh. The file must have previously been openend with read-access before calling this function.
 It returns a dynamic value containing a data structure based on the parsed content.
 The caller is responsible for closing the file as well as deleting the dynamic value once it's no longer needed (use dtl_dec_ref).
 
 
-** `dtl_dv_t* dtl_json_load_cstr(const char *cstr)` **
+**`dtl_dv_t* dtl_json_load_cstr(const char *cstr)`**
 
 Parses the JSON document from the null-terminated string in str in cstr.
 It returns a dynamic value containing a data structure based on the parsed content.
