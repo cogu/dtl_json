@@ -237,3 +237,36 @@ int main(int argc, char **argv)
    return 0;
 }
 ```
+
+Output:
+
+```
+California : 39557045
+Florida : 21299325
+Georgia : 10519475
+Illinois : 12741080
+Michigan : 9995915
+New York : 19542209
+North Carolina : 10383620
+Ohio : 11689442
+Pennsylvania : 12807060
+Texas : 28701845
+
+---
+
+Code Complete:
+   Author: Steve McConnel
+   Published: 1993
+
+Clean Code:
+   Author: Robert C. Martin
+   Published: 2008
+
+The Pragmatic Programmer:
+   Authors: Andy Hunt, Dave Thomas
+   Published: 1999
+
+Refactoring:
+   Authors: Martin Fowler, Kent Beck
+   Published: 1999
+```
