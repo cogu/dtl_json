@@ -1,0 +1,28 @@
+[
+   {
+      "Author": "Steve McConnel",
+      "Title": "Code Complete",
+      "YearPublished": 1993
+   },
+   {
+      "Author": "Robert C. Martin",
+      "Title": "Clean Code",
+      "YearPublished": 2008
+   },
+   {
+      "Author": [
+         "Andy Hunt",
+         "Dave Thomas"
+      ],
+      "Title": "The Pragmatic Programmer",
+      "YearPublished": 1999
+   },
+   {
+      "Author": [
+         "Martin Fowler",
+         "Kent Beck"
+      ],
+      "Title": "Refactoring",
+      "YearPublished": 1999
+   }
+]
