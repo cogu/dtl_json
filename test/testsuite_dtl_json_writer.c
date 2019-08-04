@@ -41,7 +41,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // PRIVATE CONSTANTS AND DATA TYPES
 //////////////////////////////////////////////////////////////////////////////
-#define GEN_DATA_PATH "gen_data/"
+
 
 //////////////////////////////////////////////////////////////////////////////
 // PRIVATE FUNCTION PROTOTYPES
@@ -49,11 +49,14 @@
 
 static void test_json_write_true(CuTest* tc);
 static void test_json_write_false(CuTest* tc);
-static void test_json_write_signed_integer(CuTest* tc);
+static void test_json_write_i32(CuTest* tc);
 static void test_json_write_i32_list_no_indent(CuTest* tc);
 static void test_json_write_i32_list_with_indent(CuTest* tc);
 static void test_json_write_i32_list_inside_list_with_indent(CuTest* tc);
 static void test_json_write_i32_list_inside_list_no_indent(CuTest* tc);
+static void test_json_write_u32(CuTest* tc);
+static void test_json_write_u32_list_no_indent(CuTest* tc);
+static void test_json_write_u32_list_with_indent(CuTest* tc);
 static void test_json_write_small_object_no_indent(CuTest* tc);
 static void test_json_write_small_object_with_indent(CuTest* tc);
 static void test_json_write_small_objects_with_indent(CuTest* tc);
@@ -76,11 +79,14 @@ CuSuite* testsuite_dtl_json_writer(void)
 
    SUITE_ADD_TEST(suite, test_json_write_true);
    SUITE_ADD_TEST(suite, test_json_write_false);
-   SUITE_ADD_TEST(suite, test_json_write_signed_integer);
+   SUITE_ADD_TEST(suite, test_json_write_i32);
    SUITE_ADD_TEST(suite, test_json_write_i32_list_no_indent);
    SUITE_ADD_TEST(suite, test_json_write_i32_list_with_indent);
    SUITE_ADD_TEST(suite, test_json_write_i32_list_inside_list_with_indent);
    SUITE_ADD_TEST(suite, test_json_write_i32_list_inside_list_no_indent);
+   SUITE_ADD_TEST(suite, test_json_write_u32);
+   SUITE_ADD_TEST(suite, test_json_write_u32_list_no_indent);
+   SUITE_ADD_TEST(suite, test_json_write_u32_list_with_indent);
    SUITE_ADD_TEST(suite, test_json_write_small_object_no_indent);
    SUITE_ADD_TEST(suite, test_json_write_small_object_with_indent);
    SUITE_ADD_TEST(suite, test_json_write_small_objects_with_indent);
@@ -126,7 +132,7 @@ static void test_json_write_false(CuTest* tc)
    adt_str_delete(output);
 }
 
-static void test_json_write_signed_integer(CuTest* tc)
+static void test_json_write_i32(CuTest* tc)
 {
    const int indent = 3;
    dtl_sv_t *sv;
@@ -362,6 +368,80 @@ static void test_json_write_i32_list_inside_list_no_indent(CuTest* tc)
    dtl_av_delete(av);
    adt_str_delete(output);
 }
+
+static void test_json_write_u32(CuTest* tc)
+{
+   const int indent = 0;
+   dtl_sv_t *sv;
+   adt_str_t *output;
+
+   sv = dtl_sv_make_u32(0);
+   CuAssertPtrNotNull(tc, sv);
+   output = dtl_json_dumps((dtl_dv_t*) sv, indent, false);
+   CuAssertPtrNotNull(tc, output);
+   CuAssertStrEquals(tc, "0", adt_str_cstr(output));
+   adt_str_delete(output);
+
+   dtl_sv_set_u32(sv, UINT32_MAX);
+   CuAssertPtrNotNull(tc, sv);
+   output = dtl_json_dumps((dtl_dv_t*) sv, indent, false);
+   CuAssertPtrNotNull(tc, output);
+   CuAssertStrEquals(tc, "4294967295", adt_str_cstr(output));
+   adt_str_delete(output);
+
+   dtl_dec_ref(sv);
+}
+
+static void test_json_write_u32_list_no_indent(CuTest* tc)
+{
+   const int indent = 0;
+   int32_t i;
+   dtl_av_t *av;
+   adt_str_t *output;
+
+   av = dtl_av_new();
+   CuAssertPtrNotNull(tc, av);
+   for(i=0; i<5; i++)
+   {
+      dtl_sv_t *sv = dtl_sv_make_u32(UINT32_MAX);
+      CuAssertPtrNotNull(tc, sv);
+      dtl_av_push(av, (dtl_dv_t*) sv, false);
+   }
+   output = dtl_json_dumps((dtl_dv_t*) av, indent, false);
+   CuAssertPtrNotNull(tc, output);
+   CuAssertStrEquals(tc, "[4294967295, 4294967295, 4294967295, 4294967295, 4294967295]", adt_str_cstr(output));
+   dtl_av_delete(av);
+   adt_str_delete(output);
+}
+
+static void test_json_write_u32_list_with_indent(CuTest* tc)
+{
+   const int indent = 3;
+   int32_t i;
+   dtl_av_t *av;
+   adt_str_t *output;
+
+   av = dtl_av_new();
+   CuAssertPtrNotNull(tc, av);
+   for(i=0; i<5; i++)
+   {
+      dtl_sv_t *sv = dtl_sv_make_u32(UINT32_MAX);
+      CuAssertPtrNotNull(tc, sv);
+      dtl_av_push(av, (dtl_dv_t*) sv, false);
+   }
+   output = dtl_json_dumps((dtl_dv_t*) av, indent, false);
+   CuAssertPtrNotNull(tc, output);
+   CuAssertStrEquals(tc, "[\n"
+         "   4294967295,\n"
+         "   4294967295,\n"
+         "   4294967295,\n"
+         "   4294967295,\n"
+         "   4294967295\n"
+         "]", adt_str_cstr(output));
+   dtl_av_delete(av);
+   adt_str_delete(output);
+}
+
 
 static void test_json_write_small_object_no_indent(CuTest* tc)
 {

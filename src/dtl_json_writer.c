@@ -278,6 +278,7 @@ static dtl_error_t dtl_json_writer_write_sv(dtl_json_writer_t *self, const dtl_s
    union {
       const char *str;
       int32_t i32;
+      uint32_t u32;
    } val;
    if (indentEnable)
    {
@@ -289,11 +290,23 @@ static dtl_error_t dtl_json_writer_write_sv(dtl_json_writer_t *self, const dtl_s
       val.i32 = dtl_sv_to_i32(sv, NULL);
       if (self->destFile != 0)
       {
-         fprintf(self->destFile, "%d", val.i32);
+         fprintf(self->destFile, "%d", (int) val.i32);
       }
       else
       {
-         sprintf(buf, "%d", val.i32);
+         sprintf(buf, "%d", (int) val.i32);
+         adt_str_append_cstr(self->destStr, buf);
+      }
+      break;
+   case DTL_SV_U32:
+      val.u32 = dtl_sv_to_i32(sv, NULL);
+      if (self->destFile != 0)
+      {
+         fprintf(self->destFile, "%u", (unsigned int) val.u32);
+      }
+      else
+      {
+         sprintf(buf, "%u", (unsigned int) val.u32);
          adt_str_append_cstr(self->destStr, buf);
       }
       break;

@@ -3,7 +3,7 @@ This a JSON parser and writer library built on top of [dtl_type](https://github.
 
 ## What is dtl_type?
 
-[dtl_type](https://github.com/cogu/dtl_type) is one of my other github repos. If you are unfamiliar with it you should check it out first.
+[dtl_type](https://github.com/cogu/dtl_type) is one of my other github repos. If you are unfamiliar with it you should check it out.
 
 # Dependencies
 
@@ -71,7 +71,7 @@ This library is in early stages of development and has many limitations:
 
 ## Numbers
 
-* Only supports integers as valid number format.
+* Only supports (signed/unsigned) integers as valid number format.
 
 ## Strings
 
