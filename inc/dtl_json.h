@@ -55,6 +55,6 @@ adt_str_t* dtl_json_dumps(const dtl_dv_t *dv, int32_t indent, bool sortKeys);
 dtl_dv_t* dtl_json_load(FILE *fh);
 dtl_dv_t* dtl_json_loads(adt_str_t *str);
 dtl_dv_t* dtl_json_load_cstr(const char *str);
-dtl_dv_t* dtl_json_load_bstr(const char *pBegin, const char *pEnd);
+dtl_dv_t* dtl_json_load_bstr(const uint8_t *pBegin, const uint8_t *pEnd);
 
 #endif //DTL_JSON_H

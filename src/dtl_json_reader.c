@@ -144,17 +144,17 @@ dtl_dv_t* dtl_json_load_cstr(const char *str)
    const char *pEnd;
    size_t len = strlen(str);
    pEnd = str + len;
-   return dtl_json_load_bstr(pBegin, pEnd);
+   return dtl_json_load_bstr( (const uint8_t*) pBegin, (const uint8_t*) pEnd);
 }
 
-dtl_dv_t* dtl_json_load_bstr(const char *pBegin, const char *pEnd)
+dtl_dv_t* dtl_json_load_bstr(const uint8_t *pBegin, const uint8_t *pEnd)
 {
    dtl_dv_t *retval = (dtl_dv_t*) 0;
    const uint8_t *pResult;
    dtl_json_reader_t reader;
    dtl_json_reader_create(&reader);
    reader.eof = true;
-   pResult = dtl_json_reader_parse_block(&reader, (const uint8_t*) pBegin, (const uint8_t*) pEnd);
+   pResult = dtl_json_reader_parse_block(&reader, pBegin, pEnd);
    if (pResult == (const uint8_t*) pEnd)
    {
       if (reader.data->currentElem != 0)
