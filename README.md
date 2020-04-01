@@ -1,18 +1,20 @@
-# dtl_json library
+# dtl_json
 This a JSON parser and writer library built on top of [dtl_type](https://github.com/cogu/dtl_type).
 
-## What is dtl_type?
+## Where is it used?
 
-[dtl_type](https://github.com/cogu/dtl_type) is one of my other github repos. If you are unfamiliar with it you should check it out.
+* [cogu/c-apx](https://github.com/cogu/c-apx)
 
-# Dependencies
+This repo is a submodule of the [cogu/c-apx](https://github.com/cogu/c-apx) (top-level) project.
+
+## Dependencies
 
 * [cogu/adt](https://github.com/cogu/adt)
 * [cogu/bstr](https://github.com/cogu/bstr)
 * [cogu/dtl_type](https://github.com/cogu/dtl_type)
 * [cogu/cutil](https://github.com/cogu/cutil)
 
-This repo depends on some of my other repos. The unit test project(s) assumes that repos are cloned (separately) into a common directory.
+The unit test project(s) assume that the repos are cloned (separately) into a common directory as seen below.
 
 * adt
 * bstr
@@ -20,7 +22,35 @@ This repo depends on some of my other repos. The unit test project(s) assumes th
 * dtl_type
 * dtl_json (this repo)
 
-# JSON and DTL type mapping
+### Git Example
+
+```bash
+$ cd ~
+$ mkdir repo && cd repo
+$ git clone https://github.com/cogu/adt.git
+$ git clone https://github.com/cogu/bstr.git
+$ git clone https://github.com/cogu/cutil.git
+$ git clone https://github.com/cogu/dtl_type.git
+$ git clone https://github.com/cogu/dtl_json.git
+$ cd dtl_json
+```
+
+## Building with CMake
+
+CMake files exist but has so far only been tested on Linux.
+
+First clone this repo and its dependencies into a common directory (such as ~/repo) as seen above. Alternatively the repos can be submodules of a top-level repo (as seen in [cogu/c-apx](https://github.com/cogu/c-apx)).
+
+### Running unit tests (Linux)
+
+```bash
+$ mkdir UnitTest && cd UnitTest
+$ cmake -DCMAKE_BUILD_TYPE=UnitTest ..
+$ cmake --build .
+$ ./dtl_json_unit
+```
+
+## JSON and DTL type mapping
 
 Type mapping is straightforward between JSON and DTL.
 
@@ -32,11 +62,11 @@ Type mapping is straightforward between JSON and DTL.
 | List        | dtl_av_t |
 | Object      | dtl_hv_t |
 
-# API
+## API
 
 The API is simple and is inspired by the JSON module found in Python.
 
-## Writing JSON
+### Writing JSON
 
 **`int32_t dtl_json_dump(const dtl_dv_t *dv, FILE *fh, int32_t indent, bool sortKeys)`**
 
@@ -50,7 +80,7 @@ The caller is also responsible for closing the openend file upon the return of t
 Writes the dynamic value (dv) to a string which is returned by the function. The caller is responsible for deleting the string when it's no longer needed.
 Remaining arguments are the same as above.
 
-## Reading JSON
+### Reading JSON
 
 **`dtl_dv_t* dtl_json_load(FILE *fh)`**
 
@@ -65,21 +95,21 @@ Parses the JSON document from the null-terminated string (cstr).
 It returns a dynamic value containing a data structure based on the parsed content.
 The caller is responsible for deleting the dynamic value when it's no longer needed (use dtl_dec_ref).
 
-# Known Limitations
+## Known Limitations
 
 This library is in early stages of development and has many limitations:
 
-## Numbers
+### Numbers
 
 * Only supports (signed/unsigned) integers as valid number format.
 
-## Strings
+### Strings
 
 * UTF-8 strings should work but needs more testing. 
 * No support for UTF-16. 
 * Escaping unicode literals using the \uxxxx format is only partially implemented and is discouraged.
 
-# Usage
+## Usage Example
 ``` C
 #include <stdio.h>
 #include <stdlib.h>
