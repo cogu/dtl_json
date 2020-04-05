@@ -3,4 +3,3 @@ CMemLeak.txt
 **/Release/
 **/UnitTest/
 language.settings.xml
-*.json

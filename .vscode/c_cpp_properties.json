@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../adt/inc",
+                "${workspaceFolder}/../bstr/inc",
+                "${workspaceFolder}/../cutil/inc",
+                "${workspaceFolder}/../dtl_type/inc"
+            ],
+            "defines": [
+                "MEM_LEAK_CHECK",
+                "UNIT_TEST"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c89",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
