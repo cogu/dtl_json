@@ -228,7 +228,7 @@ static void dtl_json_writer_decreaseIndent(dtl_json_writer_t *self)
          self->currentIndent = 0;
       }
       assert(self->indentArray != 0);
-      assert(adt_bytearray_length(self->indentArray) > self->currentIndent);
+      assert( (int32_t) adt_bytearray_length(self->indentArray) > self->currentIndent);
       adt_bytearray_data(self->indentArray)[self->currentIndent] = 0u;
    }
 }
