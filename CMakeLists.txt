@@ -18,16 +18,16 @@ if (UNIT_TEST)
 endif()
 
 ### Library bstr
-set (DTL_JSON_HEADER_LIST
-    inc/dtl_json.h
+set (DTL_JSON_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/dtl_json.h
 )
 
-set (DTL_JSON_SOURCE_LIST
-    src/dtl_json_reader.c
-    src/dtl_json_writer.c
+set (DTL_JSON_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dtl_json_reader.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dtl_json_writer.c
 )
 
-add_library(dtl_json ${DTL_JSON_SOURCE_LIST} ${DTL_JSON_HEADER_LIST})
+add_library(dtl_json ${DTL_JSON_HEADERS} ${DTL_JSON_SOURCES})
 if (LEAK_CHECK)
     target_compile_definitions(dtl_json PRIVATE MEM_LEAK_CHECK)
 endif()
@@ -59,6 +59,11 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
         if (LEAK_CHECK)
             target_compile_definitions(dtl_json_unit PRIVATE MEM_LEAK_CHECK)
         endif()
+
+        enable_testing()
+        add_test(dtl_json_test ${CMAKE_CURRENT_BINARY_DIR}/dtl_json_unit)
+        set_tests_properties(dtl_json_test PROPERTIES PASS_REGULAR_EXPRESSION "OK \\([0-9]+ tests\\)")
+
     endif()
 endif()
 ###
