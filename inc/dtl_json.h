@@ -40,11 +40,12 @@
 //////////////////////////////////////////////////////////////////////////////
 typedef int32_t dtl_json_error_t;
 
-#define DTL_JSON_NO_ERROR              ((dtl_json_error_t) 0)
-#define DTL_JSON_MEM_ERROR             ((dtl_json_error_t) 1)
-#define DTL_JSON_UNEXPECTED_CHAR_ERROR ((dtl_json_error_t) 2)
-#define DTL_JSON_UNEXPECTED_EOB_ERROR  ((dtl_json_error_t) 3) //EOB: End Of Buffer
-#define DTL_JSON_EMPTY_KEY_ERROR       ((dtl_json_error_t) 4)
+#define DTL_JSON_NO_ERROR                 ((dtl_json_error_t) 0)
+#define DTL_JSON_MEM_ERROR                ((dtl_json_error_t) 1)
+#define DTL_JSON_UNEXPECTED_CHAR_ERROR    ((dtl_json_error_t) 2)
+#define DTL_JSON_UNEXPECTED_EOB_ERROR     ((dtl_json_error_t) 3) //EOB: End Of Buffer
+#define DTL_JSON_EMPTY_KEY_ERROR          ((dtl_json_error_t) 4)
+#define DTL_JSON_UNMATCHED_STRING_LITERAL ((dtl_json_error_t) 5)
 
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTION PROTOTYPES
