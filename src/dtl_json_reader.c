@@ -436,6 +436,11 @@ static const uint8_t *dtl_json_reader_parse_block(dtl_json_reader_t *self, const
                      self->parseState = PARSE_STATE_OBJECT_SEP;
                   }
                }
+               else
+               {
+                  self->parseState = PARSE_STATE_ERROR;
+                  self->lastError = DTL_JSON_UNMATCHED_STRING_LITERAL;
+               }
             }
             //TODO: We should probably allow stray comma here to make it easier for the user
             else
