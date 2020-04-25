@@ -16,7 +16,7 @@ This repo is a submodule of the [cogu/c-apx](https://github.com/cogu/c-apx) (top
 * [cogu/dtl_type](https://github.com/cogu/dtl_type)
 * [cogu/cutil](https://github.com/cogu/cutil)
 
-The unit test project(s) assume that the repos are cloned (separately) into a common directory as seen below.
+The unit test project(s) assume that the repos are cloned side-by-side to a common directory as seen below.
 
 * adt
 * bstr
