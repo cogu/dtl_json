@@ -421,11 +421,11 @@ static const uint8_t *dtl_json_reader_parse_block(dtl_json_reader_t *self, const
             nextChar = *pNext;
             if (nextChar=='"')
             {
-               const uint8_t *pResult;
-               pResult = bstr_parse_json_string_literal(&self->ctx, pNext, pEnd, &self->data->objectKey);
-               if (pResult > pNext)
+               const uint8_t *pInnerResult;
+               pInnerResult = bstr_parse_json_string_literal(&self->ctx, pNext, pEnd, &self->data->objectKey);
+               if (pInnerResult > pNext)
                {
-                  pNext = pResult;
+                  pNext = pInnerResult;
                   if (adt_str_length(&self->data->objectKey) == 0)
                   {
                      self->parseState = PARSE_STATE_ERROR;
