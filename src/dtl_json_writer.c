@@ -275,6 +275,7 @@ static dtl_error_t dtl_json_writer_write_dv(dtl_json_writer_t *self, const dtl_d
 static dtl_error_t dtl_json_writer_write_sv(dtl_json_writer_t *self, const dtl_sv_t *sv, bool indentEnable)
 {
    char buf[TMP_BUF_SIZE];
+   bool ok = false;
    union {
       const char *str;
       int32_t i32;
@@ -299,7 +300,7 @@ static dtl_error_t dtl_json_writer_write_sv(dtl_json_writer_t *self, const dtl_s
       }
       break;
    case DTL_SV_U32:
-      val.u32 = dtl_sv_to_i32(sv, NULL);
+      val.u32 = dtl_sv_to_u32(sv, NULL);
       if (self->destFile != 0)
       {
          fprintf(self->destFile, "%u", (unsigned int) val.u32);
@@ -311,7 +312,7 @@ static dtl_error_t dtl_json_writer_write_sv(dtl_json_writer_t *self, const dtl_s
       }
       break;
    case DTL_SV_BOOL:
-      val.str = dtl_sv_to_bool(sv)? "true" : "false";
+      val.str = dtl_sv_to_bool(sv, NULL)? "true" : "false";
       if (self->destFile != 0)
       {
          fprintf(self->destFile, "%s", val.str);
@@ -322,17 +323,24 @@ static dtl_error_t dtl_json_writer_write_sv(dtl_json_writer_t *self, const dtl_s
       }
       break;
    case DTL_SV_STR:
-      val.str = dtl_sv_to_cstr((dtl_sv_t*) sv);
-      assert(val.str != 0);
-      if (self->destFile != 0)
+      val.str = dtl_sv_to_cstr((dtl_sv_t*) sv, &ok);
+      if (ok)
       {
-         fprintf(self->destFile, "\"%s\"", val.str);
+         assert(val.str != 0);
+         if (self->destFile != 0)
+         {
+            fprintf(self->destFile, "\"%s\"", val.str);
+         }
+         else
+         {
+            adt_str_push(self->destStr, '"');
+            adt_str_append_cstr(self->destStr, val.str);
+            adt_str_push(self->destStr, '"');
+         }
       }
       else
       {
-         adt_str_push(self->destStr, '"');
-         adt_str_append_cstr(self->destStr, val.str);
-         adt_str_push(self->destStr, '"');
+         return DTL_CONVERSION_ERROR;
       }
       break;
    default:
@@ -436,17 +444,21 @@ static dtl_error_t dtl_json_writer_write_hv(dtl_json_writer_t *self, const dtl_h
 
          for (i = 0; i<numKeys; i++)
          {
+            bool ok = false;
             dtl_dv_t *value;
-            const char *key = (const char*) dtl_sv_to_cstr((dtl_sv_t*) dtl_av_value(keys, i));
-            if ( i > 0)
+            const char *key = (const char*) dtl_sv_to_cstr((dtl_sv_t*) dtl_av_value(keys, i), &ok);
+            if (ok)
             {
-               dtl_json_writer_print(self, separatorString);
+               if (i > 0)
+               {
+                  dtl_json_writer_print(self, separatorString);
+               }
+               dtl_json_writer_putc(self, '"');
+               dtl_json_writer_print(self, key);
+               dtl_json_writer_print(self, "\": ");
+               value = (dtl_dv_t*)dtl_hv_get_cstr(hv, key);
+               dtl_json_writer_write_dv(self, value, true);
             }
-            dtl_json_writer_putc(self, '"');
-            dtl_json_writer_print(self, key);
-            dtl_json_writer_print(self, "\": ");
-            value = (dtl_dv_t*) dtl_hv_get_cstr(hv, key);
-            dtl_json_writer_write_dv(self, value, true);
          }
       }
       else
@@ -455,20 +467,27 @@ static dtl_error_t dtl_json_writer_write_hv(dtl_json_writer_t *self, const dtl_h
          dtl_json_writer_print(self, self->newLineStr);
          for (i = 0; i<numKeys; i++)
          {
-
+            bool ok = false;
             dtl_dv_t *value;
-            const char *key = (const char*) dtl_sv_to_cstr((dtl_sv_t*) dtl_av_value(keys, i));
-            dtl_json_writer_write_indent_str(self);
-            dtl_json_writer_putc(self, '"');
-            dtl_json_writer_print(self, key);
-            dtl_json_writer_print(self, "\": ");
-            value = (dtl_dv_t*) dtl_hv_get_cstr(hv, key);
-            dtl_json_writer_write_dv(self, value, false);
-            if ( i < (numKeys-1))
+            const char *key = (const char*) dtl_sv_to_cstr((dtl_sv_t*) dtl_av_value(keys, i), &ok);
+            if (ok)
             {
-               dtl_json_writer_print(self, separatorString);
+               dtl_json_writer_write_indent_str(self);
+               dtl_json_writer_putc(self, '"');
+               dtl_json_writer_print(self, key);
+               dtl_json_writer_print(self, "\": ");
+               value = (dtl_dv_t*)dtl_hv_get_cstr(hv, key);
+               dtl_json_writer_write_dv(self, value, false);
+               if (i < (numKeys - 1))
+               {
+                  dtl_json_writer_print(self, separatorString);
+               }
+               dtl_json_writer_print(self, self->newLineStr);
             }
-            dtl_json_writer_print(self, self->newLineStr);
+            else
+            {
+               //TODO: error handling
+            }
          }
       }
       dtl_json_writer_decreaseIndent(self);
