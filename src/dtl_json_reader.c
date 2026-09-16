@@ -4,32 +4,18 @@
 * \date      2019-07-18
 * \brief     DTL-powered JSON reader
 *
-* Copyright (c) 2019 Conny Gustafsson
-* Permission is hereby granted, free of charge, to any person obtaining a copy of
-* this software and associated documentation files (the "Software"), to deal in
-* the Software without restriction, including without limitation the rights to
-* use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-* the Software, and to permit persons to whom the Software is furnished to do so,
-* subject to the following conditions:
-
-* The above copyright notice and this permission notice shall be included in all
-* copies or substantial portions of the Software.
-
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-* FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-* COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-* IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*
+* Copyright (c) 2019-2026 Conny Gustafsson
+* SPDX-License-Identifier: MIT
+* See LICENSE in project root for full license terms.
 ******************************************************************************/
+
 //////////////////////////////////////////////////////////////////////////////
 // INCLUDES
 //////////////////////////////////////////////////////////////////////////////
 #include <assert.h>
 #include <string.h>
 #include <stdbool.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include "bstr.h"
 #include "dtl_json.h"
 #include "adt_bytearray.h"
@@ -42,90 +28,88 @@
 //////////////////////////////////////////////////////////////////////////////
 // PRIVATE CONSTANTS AND DATA TYPES
 //////////////////////////////////////////////////////////////////////////////
-typedef uint8_t parseState_t;
+typedef uint8_t parse_state_t;
 
-#define PARSE_STATE_NONE          ((parseState_t) 0u)
-#define PARSE_STATE_ERROR         ((parseState_t) 1u)
-#define PARSE_STATE_PRE_VALUE     ((parseState_t) 2u)
-#define PARSE_STATE_VALUE         ((parseState_t) 3u)
-#define PARSE_STATE_POST_VALUE    ((parseState_t) 4u)
-#define PARSE_STATE_ARRAY_BEGIN   ((parseState_t) 5u)
-#define PARSE_STATE_ARRAY_NEXT    ((parseState_t) 6u)
-#define PARSE_STATE_OBJECT_BEGIN  ((parseState_t) 7u)
-#define PARSE_STATE_OBJECT_KEY    ((parseState_t) 8u)
-#define PARSE_STATE_OBJECT_SEP    ((parseState_t) 9u)
-#define PARSE_STATE_OBJECT_NEXT   ((parseState_t) 10u)
+#define PARSE_STATE_NONE          ((parse_state_t) 0u)
+#define PARSE_STATE_ERROR         ((parse_state_t) 1u)
+#define PARSE_STATE_PRE_VALUE     ((parse_state_t) 2u)
+#define PARSE_STATE_VALUE         ((parse_state_t) 3u)
+#define PARSE_STATE_POST_VALUE    ((parse_state_t) 4u)
+#define PARSE_STATE_ARRAY_BEGIN   ((parse_state_t) 5u)
+#define PARSE_STATE_ARRAY_NEXT    ((parse_state_t) 6u)
+#define PARSE_STATE_OBJECT_BEGIN  ((parse_state_t) 7u)
+#define PARSE_STATE_OBJECT_KEY    ((parse_state_t) 8u)
+#define PARSE_STATE_OBJECT_SEP    ((parse_state_t) 9u)
+#define PARSE_STATE_OBJECT_NEXT   ((parse_state_t) 10u)
 
-
-typedef struct dtl_json_readerData_tag
+typedef struct dtl_json_reader_data_tag
 {
-   dtl_dv_t *currentElem; //strong reference
-   dtl_dv_t *parentElem; //weak reference
-   bool isArray;
-   bool isObject;
-   adt_str_t objectKey;
-} dtl_json_readerData_t;
+   dtl_dv_t *current_elem; // strong reference
+   dtl_dv_t *parent_elem;  // weak reference
+   bool is_array;
+   bool is_object;
+   adt_str_t object_key;
+} dtl_json_reader_data_t;
 
 typedef struct dtl_json_reader_tag
 {
    adt_stack_t stack;
-   adt_bytearray_t parseBuf;
-   const uint8_t *pBegin;
-   const uint8_t *pEnd;
+   adt_bytearray_t parse_buf;
+   const uint8_t *begin;
+   const uint8_t *end;
    bool eof;
-   bool parseComplete;
+   bool parse_complete;
    bstr_context_t ctx;
-   parseState_t parseState;
-   dtl_json_readerData_t *data;
-   dtl_json_error_t lastError;
-   uint32_t lineNumber;
+   parse_state_t parse_state;
+   dtl_json_reader_data_t *data;
+   dtl_json_error_t last_error;
+   uint32_t line_number;
 } dtl_json_reader_t;
-
-
 
 //////////////////////////////////////////////////////////////////////////////
 // PRIVATE FUNCTION PROTOTYPES
 //////////////////////////////////////////////////////////////////////////////
 static void dtl_json_reader_create(dtl_json_reader_t *self);
 static void dtl_json_reader_destroy(dtl_json_reader_t *self);
-static void dtl_json_readerData_create(dtl_json_readerData_t *self);
-static void dtl_json_readerData_destroy(dtl_json_readerData_t *self);
-static dtl_json_readerData_t* dtl_json_readerData_new(void);
-static void dtl_json_readerData_delete(dtl_json_readerData_t *self);
-static void dtl_json_readerData_vdelete(void *arg);
+static void dtl_json_reader_data_create(dtl_json_reader_data_t *self);
+static void dtl_json_reader_data_destroy(dtl_json_reader_data_t *self);
+static dtl_json_reader_data_t* dtl_json_reader_data_new(void);
+static void dtl_json_reader_data_delete(dtl_json_reader_data_t *self);
+static void dtl_json_reader_data_vdelete(void *arg);
 
-static void dtl_json_reader_readChunk(void *arg,const uint8_t *pChunk, uint32_t chunkLen);
+static void dtl_json_reader_read_chunk(void *arg, const uint8_t *chunk, uint32_t chunk_len);
 static void dtl_json_reader_close(void *arg);
-static const uint8_t *dtl_json_reader_parse_block(dtl_json_reader_t *self, const uint8_t *pBegin, const uint8_t *pEnd);
-static const uint8_t *dtl_json_reader_parse_value(dtl_json_reader_t *self, const uint8_t *pLineBegin, const uint8_t *pLineEnd);
-static const uint8_t *dtl_json_reader_parse_number(dtl_json_reader_t *self, const uint8_t *pBegin, const uint8_t *pEnd);
-static const uint8_t *dtl_json_reader_lstrip(dtl_json_reader_t *self, const uint8_t *pBegin, const uint8_t *pEnd);
-
-//////////////////////////////////////////////////////////////////////////////
-// PUBLIC VARIABLES
-//////////////////////////////////////////////////////////////////////////////
+static const uint8_t *dtl_json_reader_parse_block(dtl_json_reader_t *self, const uint8_t *begin, const uint8_t *end);
+static const uint8_t *dtl_json_reader_parse_value(dtl_json_reader_t *self, const uint8_t *begin, const uint8_t *end);
+static const uint8_t *dtl_json_reader_parse_number(dtl_json_reader_t *self, const uint8_t *begin, const uint8_t *end);
+static const uint8_t *dtl_json_reader_lstrip(dtl_json_reader_t *self, const uint8_t *begin, const uint8_t *end);
 
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 //////////////////////////////////////////////////////////////////////////////
 dtl_dv_t* dtl_json_load(FILE *fh)
 {
-   dtl_dv_t *retval = (dtl_dv_t*) 0;
-   ifstream_handler_t handler;
-   ifstream_t ifstream;
+   dtl_dv_t *retval = NULL;
+   if (fh == NULL)
+   {
+      return NULL;
+   }
+
+   cutil_ifstream_handler_t handler;
+   cutil_ifstream_t ifstream;
    dtl_json_reader_t reader;
    dtl_json_reader_create(&reader);
    memset(&handler, 0, sizeof(handler));
    handler.arg = (void*) &reader;
-   handler.write = dtl_json_reader_readChunk;
+   handler.write = dtl_json_reader_read_chunk;
    handler.close = dtl_json_reader_close;
-   ifstream_create(&ifstream, &handler);
-   if (ifstream_readTextFileFromHandle(&ifstream, fh) == 0)
+   cutil_ifstream_create(&ifstream, &handler);
+   if (cutil_ifstream_read_text_file_from_handle(&ifstream, fh) == 0)
    {
-      if ( (reader.parseComplete) && (reader.data->currentElem != 0) )
+      if (reader.parse_complete && (reader.parse_state == PARSE_STATE_NONE) && (adt_stack_size(&reader.stack) == 0) && (reader.data->current_elem != NULL))
       {
-         retval = reader.data->currentElem;
-         dtl_dv_inc_ref(reader.data->currentElem);
+         retval = reader.data->current_elem;
+         dtl_dv_inc_ref(reader.data->current_elem);
       }
       dtl_json_reader_destroy(&reader);
    }
@@ -136,36 +120,45 @@ dtl_dv_t* dtl_json_load(FILE *fh)
    return retval;
 }
 
-dtl_dv_t* dtl_json_loads(adt_str_t *str);
+dtl_dv_t* dtl_json_loads(const adt_str_t *str)
+{
+   if (str != NULL)
+   {
+      const uint8_t *begin = (const uint8_t*) adt_str_data(str);
+      const uint8_t *end = begin + adt_str_length(str);
+      return dtl_json_load_bstr(begin, end);
+   }
+   return NULL;
+}
 
 dtl_dv_t* dtl_json_load_cstr(const char *str)
 {
-   const char *pBegin = str;
-   const char *pEnd;
-   size_t len = strlen(str);
-   pEnd = str + len;
-   return dtl_json_load_bstr( (const uint8_t*) pBegin, (const uint8_t*) pEnd);
+   if (str != NULL)
+   {
+      const uint8_t *begin = (const uint8_t*) str;
+      const uint8_t *end = begin + strlen(str);
+      return dtl_json_load_bstr(begin, end);
+   }
+   return NULL;
 }
 
-dtl_dv_t* dtl_json_load_bstr(const uint8_t *pBegin, const uint8_t *pEnd)
+dtl_dv_t* dtl_json_load_bstr(const uint8_t *begin, const uint8_t *end)
 {
-   dtl_dv_t *retval = (dtl_dv_t*) 0;
-   const uint8_t *pResult;
-   dtl_json_reader_t reader;
-   dtl_json_reader_create(&reader);
-   reader.eof = true;
-   pResult = dtl_json_reader_parse_block(&reader, pBegin, pEnd);
-   if (pResult == (const uint8_t*) pEnd)
+   dtl_dv_t *retval = NULL;
+   if ((begin != NULL) && (end != NULL) && (begin <= end))
    {
-      if (reader.data->currentElem != 0)
+      dtl_json_reader_t reader;
+      dtl_json_reader_create(&reader);
+      reader.eof = true;
+      const uint8_t *result = dtl_json_reader_parse_block(&reader, begin, end);
+      if ((result == end) && (reader.parse_state == PARSE_STATE_NONE) && (adt_stack_size(&reader.stack) == 0))
       {
-         retval = reader.data->currentElem;
-         dtl_dv_inc_ref(reader.data->currentElem);
+         if (reader.data->current_elem != NULL)
+         {
+            retval = reader.data->current_elem;
+            dtl_dv_inc_ref(reader.data->current_elem);
+         }
       }
-      dtl_json_reader_destroy(&reader);
-   }
-   else
-   {
       dtl_json_reader_destroy(&reader);
    }
    return retval;
@@ -176,480 +169,576 @@ dtl_dv_t* dtl_json_load_bstr(const uint8_t *pBegin, const uint8_t *pEnd)
 //////////////////////////////////////////////////////////////////////////////
 static void dtl_json_reader_create(dtl_json_reader_t *self)
 {
-   if (self != 0)
+   if (self != NULL)
    {
       self->eof = false;
-      self->parseComplete = false;
-      self->pBegin = 0;
-      self->pEnd = 0;
-      self->lastError = DTL_JSON_NO_ERROR;
-      self->lineNumber = 1u;
-      self->parseState = PARSE_STATE_NONE;
-      self->data = dtl_json_readerData_new();
-      adt_bytearray_create(&self->parseBuf, ADT_BYTE_ARRAY_DEFAULT_GROW_SIZE);
+      self->parse_complete = false;
+      self->begin = NULL;
+      self->end = NULL;
+      self->last_error = DTL_JSON_NO_ERROR;
+      self->line_number = 1u;
+      self->parse_state = PARSE_STATE_NONE;
+      self->data = dtl_json_reader_data_new();
+      adt_bytearray_create(&self->parse_buf);
       bstr_context_create(&self->ctx);
-      adt_stack_create(&self->stack, dtl_json_readerData_vdelete);
+      adt_stack_create(&self->stack, dtl_json_reader_data_vdelete);
    }
 }
+
 static void dtl_json_reader_destroy(dtl_json_reader_t *self)
 {
-   if (self != 0)
+   if (self != NULL)
    {
-      adt_bytearray_destroy(&self->parseBuf);
-      dtl_json_readerData_delete(self->data);
+      adt_bytearray_destroy(&self->parse_buf);
+      dtl_json_reader_data_delete(self->data);
       adt_stack_destroy(&self->stack);
    }
 }
 
-static void dtl_json_readerData_create(dtl_json_readerData_t *self)
+static void dtl_json_reader_data_create(dtl_json_reader_data_t *self)
 {
-   if (self != 0)
+   if (self != NULL)
    {
-      self->currentElem = (dtl_dv_t*) 0;
-      self->parentElem = (dtl_dv_t*) 0;
-      self->isArray = false;
-      self->isObject = false;
-      adt_str_create(&self->objectKey);
+      self->current_elem = NULL;
+      self->parent_elem = NULL;
+      self->is_array = false;
+      self->is_object = false;
+      adt_str_create(&self->object_key);
    }
 }
 
-static void dtl_json_readerData_destroy(dtl_json_readerData_t *self)
+static void dtl_json_reader_data_destroy(dtl_json_reader_data_t *self)
 {
-   if (self != 0)
+   if (self != NULL)
    {
-      adt_str_destroy(&self->objectKey);
-      if ( self->currentElem != 0)
+      adt_str_destroy(&self->object_key);
+      if (self->current_elem != NULL)
       {
-         dtl_dv_dec_ref(self->currentElem);
+         dtl_dv_dec_ref(self->current_elem);
       }
    }
 }
 
-static dtl_json_readerData_t* dtl_json_readerData_new(void)
+static dtl_json_reader_data_t* dtl_json_reader_data_new(void)
 {
-   dtl_json_readerData_t *self = (dtl_json_readerData_t*) malloc(sizeof(dtl_json_readerData_t));
-   if (self != 0)
+   dtl_json_reader_data_t *self = (dtl_json_reader_data_t*) malloc(sizeof(dtl_json_reader_data_t));
+   if (self != NULL)
    {
-      dtl_json_readerData_create(self);
+      dtl_json_reader_data_create(self);
    }
    return self;
 }
 
-static void dtl_json_readerData_delete(dtl_json_readerData_t *self)
+static void dtl_json_reader_data_delete(dtl_json_reader_data_t *self)
 {
-   if (self != 0)
+   if (self != NULL)
    {
-      dtl_json_readerData_destroy(self);
+      dtl_json_reader_data_destroy(self);
       free(self);
    }
 }
 
-static void dtl_json_readerData_vdelete(void *arg)
+static void dtl_json_reader_data_vdelete(void *arg)
 {
-   dtl_json_readerData_delete((dtl_json_readerData_t*) arg);
+   dtl_json_reader_data_delete((dtl_json_reader_data_t*) arg);
 }
 
 /**
  * For now we wait until entire file has been read into memory.
- * Sometime in the future I will implement support for streamed parsing of JSON
+ * Streaming JSON parsing may be implemented in the future.
  */
-static void dtl_json_reader_readChunk(void *arg,const uint8_t *pChunk, uint32_t chunkLen)
+static void dtl_json_reader_read_chunk(void *arg, const uint8_t *chunk, uint32_t chunk_len)
 {
    dtl_json_reader_t *self = (dtl_json_reader_t*) arg;
-   if ( (self != 0) && (pChunk != 0) && (chunkLen > 0) && (chunkLen < INT32_MAX) )
+   if ((self != NULL) && (chunk != NULL) && (chunk_len > 0) && (chunk_len < INT32_MAX))
    {
-      adt_bytearray_append(&self->parseBuf, pChunk, chunkLen);
+      adt_bytearray_append(&self->parse_buf, chunk, chunk_len);
    }
 }
 
 static void dtl_json_reader_close(void *arg)
 {
    dtl_json_reader_t *self = (dtl_json_reader_t*) arg;
-   if (self != 0)
+   if (self != NULL)
    {
-      const uint8_t *pBegin;
-      const uint8_t *pEnd;
-      pBegin = adt_bytearray_data(&self->parseBuf);
-      pEnd = pBegin + adt_bytearray_length(&self->parseBuf);
-      if ( (pBegin != 0) && (pEnd != 0) )
+      const uint8_t *begin = adt_bytearray_data(&self->parse_buf);
+      const uint8_t *end = begin + adt_bytearray_length(&self->parse_buf);
+      if ((begin != NULL) && (end != NULL))
       {
-         const uint8_t *pResult = dtl_json_reader_parse_block(self, pBegin, pEnd);
-         if (pResult == pEnd)
+         const uint8_t *result = dtl_json_reader_parse_block(self, begin, end);
+         if ((result == end) && (self->parse_state == PARSE_STATE_NONE) && (adt_stack_size(&self->stack) == 0))
          {
-            self->parseComplete = true;
+            self->parse_complete = true;
          }
       }
    }
 }
 
-static const uint8_t *dtl_json_reader_parse_block(dtl_json_reader_t *self, const uint8_t *pBegin, const uint8_t *pEnd)
+static const uint8_t *dtl_json_reader_parse_block(dtl_json_reader_t *self, const uint8_t *begin, const uint8_t *end)
 {
-   const uint8_t *pNext = pBegin;
+   const uint8_t *next = begin;
 
-   if (self->parseState == PARSE_STATE_NONE)
+   if (self->parse_state == PARSE_STATE_NONE)
    {
-      self->parseState = PARSE_STATE_PRE_VALUE;
+      self->parse_state = PARSE_STATE_PRE_VALUE;
    }
-   while( (self->parseState != PARSE_STATE_NONE) && (self->parseState != PARSE_STATE_ERROR) && (pNext < pEnd) )
+   while ((self->parse_state != PARSE_STATE_NONE) && (self->parse_state != PARSE_STATE_ERROR))
    {
-      const uint8_t *pResult;
-      uint8_t nextChar = *pNext;
+      const uint8_t *result;
+      uint8_t next_char = 0;
 
-      switch(self->parseState)
+      if (next >= end)
+      {
+         if (self->parse_state == PARSE_STATE_POST_VALUE)
+         {
+            // Allow post_value to complete at end of buffer
+         }
+         else
+         {
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_EOB_ERROR;
+            break;
+         }
+      }
+      else
+      {
+         next_char = *next;
+      }
+
+      switch (self->parse_state)
       {
       case PARSE_STATE_PRE_VALUE:
-         pNext = dtl_json_reader_lstrip(self, pNext, pEnd);
-         self->parseState = PARSE_STATE_VALUE;
+         next = dtl_json_reader_lstrip(self, next, end);
+         if (next < end)
+         {
+            self->parse_state = PARSE_STATE_VALUE;
+         }
+         else
+         {
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_EOB_ERROR;
+         }
          break;
       case PARSE_STATE_VALUE:
-         pResult = dtl_json_reader_parse_value(self, pNext, pEnd);
-         if (pResult > pNext)
+         result = dtl_json_reader_parse_value(self, next, end);
+         if ((result != NULL) && (result > next))
          {
-            pNext = pResult;
+            next = result;
+         }
+         else
+         {
+            self->parse_state = PARSE_STATE_ERROR;
          }
          break;
       case PARSE_STATE_POST_VALUE:
-         pNext = dtl_json_reader_lstrip(self, pNext, pEnd);
-         if (self->data->isArray)
+         next = dtl_json_reader_lstrip(self, next, end);
+         if (self->data->is_array)
          {
-            assert(self->data->parentElem != 0);
-            dtl_av_push((dtl_av_t*) self->data->parentElem, self->data->currentElem, false);
-            self->data->currentElem = (dtl_dv_t*) 0;
-            self->parseState = PARSE_STATE_ARRAY_NEXT;
+            assert(self->data->parent_elem != NULL);
+            dtl_av_push((dtl_av_t*) self->data->parent_elem, self->data->current_elem, false);
+            self->data->current_elem = NULL;
+            self->parse_state = PARSE_STATE_ARRAY_NEXT;
          }
-         else if (self->data->isObject)
+         else if (self->data->is_object)
          {
-            assert(self->data->parentElem != 0);
-            dtl_hv_set_cstr((dtl_hv_t*) self->data->parentElem, adt_str_cstr(&self->data->objectKey), self->data->currentElem, false);
-            self->data->currentElem = (dtl_dv_t*) 0;
-            adt_str_clear(&self->data->objectKey);
-            self->parseState = PARSE_STATE_OBJECT_NEXT;
+            assert(self->data->parent_elem != NULL);
+            dtl_hv_set_cstr((dtl_hv_t*) self->data->parent_elem, adt_str_cstr(&self->data->object_key), self->data->current_elem, false);
+            self->data->current_elem = NULL;
+            adt_str_clear(&self->data->object_key);
+            self->parse_state = PARSE_STATE_OBJECT_NEXT;
          }
          else
          {
-            self->parseState = PARSE_STATE_NONE;
+            self->parse_state = PARSE_STATE_NONE;
          }
          break;
       case PARSE_STATE_ARRAY_BEGIN:
-         pNext = dtl_json_reader_lstrip(self, pNext, pEnd);
-         if ( pNext < pEnd)
+         next = dtl_json_reader_lstrip(self, next, end);
+         if (next < end)
          {
-            nextChar = *pNext;
-            if (nextChar==']')
+            next_char = *next;
+            if (next_char == ']')
             {
-               //empty array, no need to create child state
-               self->parseState = PARSE_STATE_POST_VALUE;
-               pNext++;
+               // empty array, no need to create child state
+               self->parse_state = PARSE_STATE_POST_VALUE;
+               next++;
             }
             else
             {
-               //non-empty array, push current data and initiate child state
-               dtl_json_readerData_t *childData = dtl_json_readerData_new();
-               if (childData != 0)
+               // non-empty array, push current data and initiate child state
+               dtl_json_reader_data_t *child_data = dtl_json_reader_data_new();
+               if (child_data != NULL)
                {
-                  childData->isArray = true;
-                  childData->parentElem = self->data->currentElem;
+                  child_data->is_array = true;
+                  child_data->parent_elem = self->data->current_elem;
                   adt_stack_push(&self->stack, self->data);
-                  self->data = childData;
-                  self->parseState = PARSE_STATE_PRE_VALUE;
+                  self->data = child_data;
+                  self->parse_state = PARSE_STATE_PRE_VALUE;
                }
                else
                {
-                  self->parseState = PARSE_STATE_ERROR;
-                  self->lastError = DTL_JSON_MEM_ERROR;
+                  self->parse_state = PARSE_STATE_ERROR;
+                  self->last_error = DTL_JSON_MEM_ERROR;
                }
             }
+         }
+         else
+         {
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_EOB_ERROR;
          }
          break;
       case PARSE_STATE_ARRAY_NEXT:
-         if (nextChar == ',')
+         if (next_char == ',')
          {
-            pNext++;
-            self->parseState = PARSE_STATE_PRE_VALUE;
+            next++;
+            self->parse_state = PARSE_STATE_PRE_VALUE;
          }
-         else if(nextChar == ']')
+         else if (next_char == ']')
          {
-            pNext++;
-            dtl_dv_inc_ref(self->data->currentElem);
-            dtl_json_readerData_delete(self->data);
+            next++;
+            dtl_dv_inc_ref(self->data->current_elem);
+            dtl_json_reader_data_delete(self->data);
             assert(adt_stack_size(&self->stack) > 0);
-            self->data = adt_stack_top(&self->stack);
+            self->data = (dtl_json_reader_data_t*) adt_stack_top(&self->stack);
             adt_stack_pop(&self->stack);
-            self->parseState = PARSE_STATE_POST_VALUE;
+            self->parse_state = PARSE_STATE_POST_VALUE;
          }
          else
          {
-            self->parseState = PARSE_STATE_ERROR;
-            self->lastError = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
          }
          break;
       case PARSE_STATE_OBJECT_BEGIN:
-         pNext = dtl_json_reader_lstrip(self, pNext, pEnd);
-         if ( pNext < pEnd)
+         next = dtl_json_reader_lstrip(self, next, end);
+         if (next < end)
          {
-            nextChar = *pNext;
-            if (nextChar=='}')
+            next_char = *next;
+            if (next_char == '}')
             {
-               //empty object, no need to create child state
-               self->parseState = PARSE_STATE_POST_VALUE;
-               pNext++;
+               // empty object, no need to create child state
+               self->parse_state = PARSE_STATE_POST_VALUE;
+               next++;
             }
             else
             {
-               //non-empty array, push current data and initiate child state
-               dtl_json_readerData_t *childData = dtl_json_readerData_new();
-               if (childData != 0)
+               // non-empty object, push current data and initiate child state
+               dtl_json_reader_data_t *child_data = dtl_json_reader_data_new();
+               if (child_data != NULL)
                {
-                  childData->isObject = true;
-                  childData->parentElem = self->data->currentElem;
+                  child_data->is_object = true;
+                  child_data->parent_elem = self->data->current_elem;
                   adt_stack_push(&self->stack, self->data);
-                  self->data = childData;
-                  self->parseState = PARSE_STATE_OBJECT_KEY;
+                  self->data = child_data;
+                  self->parse_state = PARSE_STATE_OBJECT_KEY;
                }
                else
                {
-                  self->parseState = PARSE_STATE_ERROR;
-                  self->lastError = DTL_JSON_MEM_ERROR;
+                  self->parse_state = PARSE_STATE_ERROR;
+                  self->last_error = DTL_JSON_MEM_ERROR;
                }
             }
-         }
-         break;
-      case PARSE_STATE_OBJECT_KEY:
-         pNext = dtl_json_reader_lstrip(self, pNext, pEnd);
-         if ( pNext < pEnd)
-         {
-            nextChar = *pNext;
-            if (nextChar=='"')
-            {
-               const uint8_t *pInnerResult;
-               pInnerResult = bstr_parse_json_string_literal(&self->ctx, pNext, pEnd, &self->data->objectKey);
-               if (pInnerResult > pNext)
-               {
-                  pNext = pInnerResult;
-                  if (adt_str_length(&self->data->objectKey) == 0)
-                  {
-                     self->parseState = PARSE_STATE_ERROR;
-                     self->lastError = DTL_JSON_EMPTY_KEY_ERROR;
-                  }
-                  else
-                  {
-                     self->parseState = PARSE_STATE_OBJECT_SEP;
-                  }
-               }
-               else
-               {
-                  self->parseState = PARSE_STATE_ERROR;
-                  self->lastError = DTL_JSON_UNMATCHED_STRING_LITERAL;
-               }
-            }
-            //TODO: We should probably allow stray comma here to make it easier for the user
-            else
-            {
-               self->parseState = PARSE_STATE_ERROR;
-               self->lastError = DTL_JSON_UNEXPECTED_CHAR_ERROR;
-            }
-         }
-         break;
-      case PARSE_STATE_OBJECT_SEP:
-         pNext = dtl_json_reader_lstrip(self, pNext, pEnd);
-         if ( pNext < pEnd)
-         {
-            nextChar = *pNext;
-            if (nextChar==':')
-            {
-               pNext++;
-               self->parseState = PARSE_STATE_PRE_VALUE;
-            }
-         }
-         break;
-      case PARSE_STATE_OBJECT_NEXT:
-         if (nextChar == ',')
-         {
-            pNext++;
-            self->parseState = PARSE_STATE_OBJECT_KEY;
-         }
-         else if(nextChar == '}')
-         {
-            pNext++;
-            dtl_dv_inc_ref(self->data->currentElem);
-            dtl_json_readerData_delete(self->data);
-            assert(adt_stack_size(&self->stack) > 0);
-            self->data = adt_stack_top(&self->stack);
-            adt_stack_pop(&self->stack);
-            self->parseState = PARSE_STATE_POST_VALUE;
          }
          else
          {
-            self->parseState = PARSE_STATE_ERROR;
-            self->lastError = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_EOB_ERROR;
+         }
+         break;
+      case PARSE_STATE_OBJECT_KEY:
+         next = dtl_json_reader_lstrip(self, next, end);
+         if (next < end)
+         {
+            next_char = *next;
+            if (next_char == '"')
+            {
+               const uint8_t *inner_result;
+               inner_result = bstr_parse_json_string_literal(&self->ctx, next, end, &self->data->object_key);
+               if ((inner_result != NULL) && (inner_result > next))
+               {
+                  next = inner_result;
+                  if (adt_str_length(&self->data->object_key) == 0)
+                  {
+                     self->parse_state = PARSE_STATE_ERROR;
+                     self->last_error = DTL_JSON_EMPTY_KEY_ERROR;
+                  }
+                  else
+                  {
+                     self->parse_state = PARSE_STATE_OBJECT_SEP;
+                  }
+               }
+               else
+               {
+                  self->parse_state = PARSE_STATE_ERROR;
+                  self->last_error = DTL_JSON_UNMATCHED_STRING_LITERAL;
+               }
+            }
+            else
+            {
+               self->parse_state = PARSE_STATE_ERROR;
+               self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            }
+         }
+         else
+         {
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_EOB_ERROR;
+         }
+         break;
+      case PARSE_STATE_OBJECT_SEP:
+         next = dtl_json_reader_lstrip(self, next, end);
+         if (next < end)
+         {
+            next_char = *next;
+            if (next_char == ':')
+            {
+               next++;
+               self->parse_state = PARSE_STATE_PRE_VALUE;
+            }
+            else
+            {
+               self->parse_state = PARSE_STATE_ERROR;
+               self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            }
+         }
+         else
+         {
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_EOB_ERROR;
+         }
+         break;
+      case PARSE_STATE_OBJECT_NEXT:
+         if (next_char == ',')
+         {
+            next++;
+            self->parse_state = PARSE_STATE_OBJECT_KEY;
+         }
+         else if (next_char == '}')
+         {
+            next++;
+            dtl_dv_inc_ref(self->data->current_elem);
+            dtl_json_reader_data_delete(self->data);
+            assert(adt_stack_size(&self->stack) > 0);
+            self->data = (dtl_json_reader_data_t*) adt_stack_top(&self->stack);
+            adt_stack_pop(&self->stack);
+            self->parse_state = PARSE_STATE_POST_VALUE;
+         }
+         else
+         {
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
          }
          break;
       default:
-         assert(0);
+         assert(false);
       }
    }
-   if (self->parseState == PARSE_STATE_ERROR)
+   if (self->parse_state == PARSE_STATE_ERROR)
    {
-      dtl_av_delete((dtl_av_t*) self->data->currentElem);
+      if (self->data->current_elem != NULL)
+      {
+         dtl_dv_dec_ref(self->data->current_elem);
+         self->data->current_elem = NULL;
+      }
    }
-   return pNext;
+   return next;
 }
 
-static const uint8_t *dtl_json_reader_parse_value(dtl_json_reader_t *self, const uint8_t *pBegin, const uint8_t *pEnd)
+static const uint8_t *dtl_json_reader_parse_value(dtl_json_reader_t *self, const uint8_t *begin, const uint8_t *end)
 {
-   const uint8_t *pNext = pBegin;
-   if (pNext < pEnd)
+   const uint8_t *next = begin;
+   if (next < end)
    {
-      const uint8_t *pResult = (const uint8_t*) 0;
-      int firstChar = (int) *pBegin;
-      if (bstr_pred_is_digit(firstChar) || firstChar == '-')
+      const uint8_t *result = NULL;
+      int first_char = (int) *begin;
+      if (bstr_pred_is_digit(first_char) || (first_char == '-'))
       {
-         pResult = dtl_json_reader_parse_number(self, pNext, pEnd);
-         if (pResult > pBegin)
+         result = dtl_json_reader_parse_number(self, next, end);
+         if ((result != NULL) && (result > begin))
          {
-            pNext = pResult;
-            self->parseState = PARSE_STATE_POST_VALUE;
+            next = result;
+            self->parse_state = PARSE_STATE_POST_VALUE;
+         }
+         else
+         {
+            self->parse_state = PARSE_STATE_ERROR;
+            if (self->last_error == DTL_JSON_NO_ERROR)
+            {
+               self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            }
          }
       }
       else
       {
          adt_str_t *str;
 
-         switch(firstChar)
+         switch (first_char)
          {
          case '"':
             str = adt_str_new();
-            if (str != 0)
+            if (str != NULL)
             {
-               pResult = bstr_parse_json_string_literal(&self->ctx, pNext, pEnd, str);
-               if (pResult > pBegin)
+               result = bstr_parse_json_string_literal(&self->ctx, next, end, str);
+               if ((result != NULL) && (result > begin))
                {
-                  self->data->currentElem = (dtl_dv_t*) dtl_sv_make_str(str);
-                  pNext = pResult;
-                  self->parseState = PARSE_STATE_POST_VALUE;
+                  self->data->current_elem = (dtl_dv_t*) dtl_sv_make_str(str);
+                  next = result;
+                  self->parse_state = PARSE_STATE_POST_VALUE;
+               }
+               else
+               {
+                  self->parse_state = PARSE_STATE_ERROR;
+                  self->last_error = DTL_JSON_UNMATCHED_STRING_LITERAL;
                }
                adt_str_delete(str);
             }
+            else
+            {
+               self->parse_state = PARSE_STATE_ERROR;
+               self->last_error = DTL_JSON_MEM_ERROR;
+            }
             break;
          case '[':
-            self->data->currentElem = (dtl_dv_t*) dtl_av_new();
-            if (self->data->currentElem == 0)
+            self->data->current_elem = (dtl_dv_t*) dtl_av_new();
+            if (self->data->current_elem == NULL)
             {
-               self->parseState = PARSE_STATE_ERROR;
-               self->lastError = DTL_JSON_MEM_ERROR;
+               self->parse_state = PARSE_STATE_ERROR;
+               self->last_error = DTL_JSON_MEM_ERROR;
             }
             else
             {
-               self->parseState = PARSE_STATE_ARRAY_BEGIN;
-               pNext++;
+               self->parse_state = PARSE_STATE_ARRAY_BEGIN;
+               next++;
             }
             break;
          case '{':
-            self->data->currentElem = (dtl_dv_t*) dtl_hv_new();
-            if (self->data->currentElem == 0)
+            self->data->current_elem = (dtl_dv_t*) dtl_hv_new();
+            if (self->data->current_elem == NULL)
             {
-               self->parseState = PARSE_STATE_ERROR;
-               self->lastError = DTL_JSON_MEM_ERROR;
+               self->parse_state = PARSE_STATE_ERROR;
+               self->last_error = DTL_JSON_MEM_ERROR;
             }
             else
             {
-               self->parseState = PARSE_STATE_OBJECT_BEGIN;
-               pNext++;
+               self->parse_state = PARSE_STATE_OBJECT_BEGIN;
+               next++;
             }
             break;
          case 'f':
-            pResult = bstr_match_cstr(pNext, pEnd, "false");
-            if (pResult > pBegin)
+            result = bstr_match_cstr(next, end, "false");
+            if ((result != NULL) && (result > begin))
             {
-               self->data->currentElem = (dtl_dv_t*) dtl_sv_make_bool(false);
-               pNext = pResult;
-               self->parseState = PARSE_STATE_POST_VALUE;
-            }
-            break;
-         case 't':
-            pResult = bstr_match_cstr(pNext, pEnd, "true");
-            if (pResult > pBegin)
-            {
-               self->data->currentElem = (dtl_dv_t*) dtl_sv_make_bool(true);
-               pNext = pResult;
-               self->parseState = PARSE_STATE_POST_VALUE;
-            }
-            break;
-         case 'n':
-            pResult = bstr_match_cstr(pNext, pEnd, "null");
-            if (pResult > pBegin)
-            {
-               self->data->currentElem = (dtl_dv_t*) dtl_sv_none();
-               pNext = pResult;
-               self->parseState = PARSE_STATE_POST_VALUE;
-            }
-            break;
-         default:
-            self->parseState = PARSE_STATE_ERROR;
-            self->lastError = DTL_JSON_UNEXPECTED_CHAR_ERROR;
-         }
-      }
-   }
-   return pNext;
-}
-
-static const uint8_t *dtl_json_reader_parse_number(dtl_json_reader_t *self, const uint8_t *pBegin, const uint8_t *pEnd)
-{
-   bstr_number_t number;
-   const uint8_t *pNext = pBegin;
-   const uint8_t *pResult = bstr_parse_json_number(&self->ctx, pBegin, pEnd, &number);
-   if (pResult > pBegin)
-   {
-      if ( (number.hasInteger) && (!number.hasFraction) && (!number.hasExponent) )
-      {
-         if (number.isNegative)
-         {
-            if (number.integer > INT32_MAX)
-            {
-               self->data->currentElem = (dtl_dv_t*) dtl_sv_make_i64( -((int64_t) number.integer) );
+               self->data->current_elem = (dtl_dv_t*) dtl_sv_make_bool(false);
+               next = result;
+               self->parse_state = PARSE_STATE_POST_VALUE;
             }
             else
             {
-               self->data->currentElem = (dtl_dv_t*) dtl_sv_make_i32( -((int32_t) number.integer) );
+               self->parse_state = PARSE_STATE_ERROR;
+               self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            }
+            break;
+         case 't':
+            result = bstr_match_cstr(next, end, "true");
+            if ((result != NULL) && (result > begin))
+            {
+               self->data->current_elem = (dtl_dv_t*) dtl_sv_make_bool(true);
+               next = result;
+               self->parse_state = PARSE_STATE_POST_VALUE;
+            }
+            else
+            {
+               self->parse_state = PARSE_STATE_ERROR;
+               self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            }
+            break;
+         case 'n':
+            result = bstr_match_cstr(next, end, "null");
+            if ((result != NULL) && (result > begin))
+            {
+               self->data->current_elem = (dtl_dv_t*) dtl_sv_none();
+               next = result;
+               self->parse_state = PARSE_STATE_POST_VALUE;
+            }
+            else
+            {
+               self->parse_state = PARSE_STATE_ERROR;
+               self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            }
+            break;
+         default:
+            self->parse_state = PARSE_STATE_ERROR;
+            self->last_error = DTL_JSON_UNEXPECTED_CHAR_ERROR;
+            break;
+         }
+      }
+   }
+   else
+   {
+      self->parse_state = PARSE_STATE_ERROR;
+      self->last_error = DTL_JSON_UNEXPECTED_EOB_ERROR;
+   }
+   return next;
+}
+
+static const uint8_t *dtl_json_reader_parse_number(dtl_json_reader_t *self, const uint8_t *begin, const uint8_t *end)
+{
+   bstr_number_t number;
+   const uint8_t *next = begin;
+   const uint8_t *result = bstr_parse_json_number(&self->ctx, begin, end, &number);
+   if ((result != NULL) && (result > begin))
+   {
+      if (number.has_integer && (!number.has_fraction) && (!number.has_exponent))
+      {
+         if (number.is_negative)
+         {
+            if (number.integer > (uint32_t) INT32_MAX)
+            {
+               self->data->current_elem = (dtl_dv_t*) dtl_sv_make_i64(-((int64_t) number.integer));
+            }
+            else
+            {
+               self->data->current_elem = (dtl_dv_t*) dtl_sv_make_i32(-((int32_t) number.integer));
             }
          }
          else
          {
-            if ( number.integer > INT32_MAX)
+            if (number.integer > (uint32_t) INT32_MAX)
             {
-               self->data->currentElem = (dtl_dv_t*) dtl_sv_make_u32(number.integer);
+               self->data->current_elem = (dtl_dv_t*) dtl_sv_make_u32(number.integer);
             }
             else
             {
-               self->data->currentElem = (dtl_dv_t*) dtl_sv_make_i32( ((int32_t) number.integer) );
+               self->data->current_elem = (dtl_dv_t*) dtl_sv_make_i32((int32_t) number.integer);
             }
          }
-         pNext = pResult;
+         next = result;
       }
       else
       {
-         pNext = (const uint8_t*) 0;
-         self->parseState = PARSE_STATE_ERROR;
+         next = NULL;
+         self->parse_state = PARSE_STATE_ERROR;
       }
    }
-   return pNext;
+   return next;
 }
 
-
-static const uint8_t *dtl_json_reader_lstrip(dtl_json_reader_t *self, const uint8_t *pBegin, const uint8_t *pEnd)
+static const uint8_t *dtl_json_reader_lstrip(dtl_json_reader_t *self, const uint8_t *begin, const uint8_t *end)
 {
-   const uint8_t *pNext = pBegin;
-   while (pNext < pEnd)
+   const uint8_t *next = begin;
+   while (next < end)
    {
-      int c = (int) *pNext;
-      if (!bstr_pred_is_whitespace(c)){
+      int c = (int) *next;
+      if (!bstr_pred_is_whitespace(c))
+      {
          break;
       }
       if (c == '\n')
       {
-         self->lineNumber++;
+         self->line_number++;
       }
-      pNext++;
+      next++;
    }
-   return pNext;
+   return next;
 }

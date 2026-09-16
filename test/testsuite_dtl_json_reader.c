@@ -1,28 +1,14 @@
 /*****************************************************************************
-* \file      testsuite_dtl_json_writer.c
+* \file      testsuite_dtl_json_reader.c
 * \author    Conny Gustafsson
 * \date      2019-07-02
-* \brief     Unit tests for dtl_json
+* \brief     Unit tests for dtl_json reader
 *
-* Copyright (c) 2019 Conny Gustafsson
-* Permission is hereby granted, free of charge, to any person obtaining a copy of
-* this software and associated documentation files (the "Software"), to deal in
-* the Software without restriction, including without limitation the rights to
-* use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-* the Software, and to permit persons to whom the Software is furnished to do so,
-* subject to the following conditions:
-
-* The above copyright notice and this permission notice shall be included in all
-* copies or substantial portions of the Software.
-
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-* FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-* COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-* IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*
+* Copyright (c) 2019-2026 Conny Gustafsson
+* SPDX-License-Identifier: MIT
+* See LICENSE in project root for full license terms.
 ******************************************************************************/
+
 //////////////////////////////////////////////////////////////////////////////
 // INCLUDES
 //////////////////////////////////////////////////////////////////////////////
@@ -37,21 +23,17 @@
 #include "CMemLeak.h"
 #endif
 
-
-//////////////////////////////////////////////////////////////////////////////
-// PRIVATE CONSTANTS AND DATA TYPES
-//////////////////////////////////////////////////////////////////////////////
-
-
 //////////////////////////////////////////////////////////////////////////////
 // PRIVATE FUNCTION PROTOTYPES
 //////////////////////////////////////////////////////////////////////////////
-
 static void test_json_read_false(CuTest* tc);
 static void test_json_read_true(CuTest* tc);
+static void test_json_read_null(CuTest* tc);
 static void test_json_read_i32(CuTest* tc);
 static void test_json_read_u32(CuTest* tc);
+static void test_json_read_i64(CuTest* tc);
 static void test_json_read_string(CuTest* tc);
+static void test_json_read_escaped_string(CuTest* tc);
 static void test_json_read_empty_list(CuTest *tc);
 static void test_json_read_list_of_i32(CuTest* tc);
 static void test_json_read_list_of_empty_lists(CuTest* tc);
@@ -60,11 +42,10 @@ static void test_json_read_empty_object(CuTest* tc);
 static void test_json_read_object(CuTest* tc);
 static void test_json_read_object_with_array(CuTest* tc);
 static void test_json_read_array_of_objects(CuTest* tc);
-
-
-//////////////////////////////////////////////////////////////////////////////
-// PRIVATE VARIABLES
-//////////////////////////////////////////////////////////////////////////////
+static void test_json_loads(CuTest* tc);
+static void test_json_load_file(CuTest* tc);
+static void test_json_read_errors(CuTest* tc);
+static void test_json_read_null_args(CuTest* tc);
 
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
@@ -75,9 +56,12 @@ CuSuite* testsuite_dtl_json_reader(void)
 
    SUITE_ADD_TEST(suite, test_json_read_false);
    SUITE_ADD_TEST(suite, test_json_read_true);
+   SUITE_ADD_TEST(suite, test_json_read_null);
    SUITE_ADD_TEST(suite, test_json_read_i32);
    SUITE_ADD_TEST(suite, test_json_read_u32);
+   SUITE_ADD_TEST(suite, test_json_read_i64);
    SUITE_ADD_TEST(suite, test_json_read_string);
+   SUITE_ADD_TEST(suite, test_json_read_escaped_string);
    SUITE_ADD_TEST(suite, test_json_read_empty_list);
    SUITE_ADD_TEST(suite, test_json_read_list_of_i32);
    SUITE_ADD_TEST(suite, test_json_read_list_of_empty_lists);
@@ -86,6 +70,10 @@ CuSuite* testsuite_dtl_json_reader(void)
    SUITE_ADD_TEST(suite, test_json_read_object);
    SUITE_ADD_TEST(suite, test_json_read_object_with_array);
    SUITE_ADD_TEST(suite, test_json_read_array_of_objects);
+   SUITE_ADD_TEST(suite, test_json_loads);
+   SUITE_ADD_TEST(suite, test_json_load_file);
+   SUITE_ADD_TEST(suite, test_json_read_errors);
+   SUITE_ADD_TEST(suite, test_json_read_null_args);
 
    return suite;
 }
@@ -118,7 +106,6 @@ static void test_json_read_false(CuTest* tc)
    CuAssertTrue(tc, dtl_sv_to_bool(sv, &ok) == false);
    CuAssertTrue(tc, ok);
    dtl_dv_delete(result);
-
 }
 
 static void test_json_read_true(CuTest* tc)
@@ -146,7 +133,28 @@ static void test_json_read_true(CuTest* tc)
    CuAssertTrue(tc, dtl_sv_to_bool(sv, &ok) == true);
    CuAssertTrue(tc, ok);
    dtl_dv_delete(result);
+}
 
+static void test_json_read_null(CuTest* tc)
+{
+   const char *input1 = "null";
+   const char *input2 = "   null";
+   dtl_dv_t *result;
+   dtl_sv_t *sv;
+
+   result = dtl_json_load_cstr(input1);
+   CuAssertPtrNotNull(tc, result);
+   CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type(result));
+   sv = (dtl_sv_t*) result;
+   CuAssertIntEquals(tc, DTL_SV_NONE, dtl_sv_type(sv));
+   dtl_dec_ref(result);
+
+   result = dtl_json_load_cstr(input2);
+   CuAssertPtrNotNull(tc, result);
+   CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type(result));
+   sv = (dtl_sv_t*) result;
+   CuAssertIntEquals(tc, DTL_SV_NONE, dtl_sv_type(sv));
+   dtl_dec_ref(result);
 }
 
 static void test_json_read_i32(CuTest* tc)
@@ -167,7 +175,6 @@ static void test_json_read_i32(CuTest* tc)
    CuAssertTrue(tc, ok);
    dtl_dv_delete(result);
 
-
    result = dtl_json_load_cstr(input2);
    CuAssertPtrNotNull(tc, result);
    CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type(result));
@@ -185,7 +192,6 @@ static void test_json_read_i32(CuTest* tc)
    CuAssertIntEquals(tc, -10, dtl_sv_to_i32(sv, &ok));
    CuAssertTrue(tc, ok);
    dtl_dv_delete(result);
-
 }
 
 static void test_json_read_u32(CuTest* tc)
@@ -213,7 +219,23 @@ static void test_json_read_u32(CuTest* tc)
    CuAssertUIntEquals(tc, 2147483648U, dtl_sv_to_u32(sv, &ok));
    CuAssertTrue(tc, ok);
    dtl_dv_delete(result);
+}
 
+static void test_json_read_i64(CuTest* tc)
+{
+   const char *input1 = "-2147483649";
+   bool ok;
+   dtl_dv_t *result;
+   dtl_sv_t *sv;
+
+   result = dtl_json_load_cstr(input1);
+   CuAssertPtrNotNull(tc, result);
+   CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type(result));
+   sv = (dtl_sv_t*) result;
+   CuAssertIntEquals(tc, DTL_SV_I64, dtl_sv_type(sv));
+   CuAssertTrue(tc, dtl_sv_to_i64(sv, &ok) == -2147483649LL);
+   CuAssertTrue(tc, ok);
+   dtl_dv_delete(result);
 }
 
 static void test_json_read_string(CuTest* tc)
@@ -249,6 +271,20 @@ static void test_json_read_string(CuTest* tc)
    sv = (dtl_sv_t*) result;
    CuAssertIntEquals(tc, DTL_SV_STR, dtl_sv_type(sv));
    CuAssertStrEquals(tc, "\343\202\204\343\201\202\343\200\202", dtl_sv_to_cstr(sv, &ok));
+   dtl_dv_delete(result);
+}
+
+static void test_json_read_escaped_string(CuTest* tc)
+{
+   const char *input = "\"line1\\nline2\\ttab\\\"quoted\\\"\"";
+   bool ok;
+   dtl_dv_t *result = dtl_json_load_cstr(input);
+   CuAssertPtrNotNull(tc, result);
+   CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type(result));
+   dtl_sv_t *sv = (dtl_sv_t*) result;
+   CuAssertIntEquals(tc, DTL_SV_STR, dtl_sv_type(sv));
+   CuAssertStrEquals(tc, "line1\nline2\ttab\"quoted\"", dtl_sv_to_cstr(sv, &ok));
+   CuAssertTrue(tc, ok);
    dtl_dv_delete(result);
 }
 
@@ -288,7 +324,6 @@ static void test_json_read_empty_list(CuTest *tc)
    av = (dtl_av_t*) result;
    CuAssertIntEquals(tc, 0, dtl_av_length(av));
    dtl_dv_delete(result);
-
 }
 
 static void test_json_read_list_of_i32(CuTest* tc)
@@ -325,7 +360,6 @@ static void test_json_read_list_of_i32(CuTest* tc)
    av = (dtl_av_t*) result;
    CuAssertIntEquals(tc, 5, dtl_av_length(av));
    dtl_dv_delete(result);
-
 }
 
 static void test_json_read_list_of_empty_lists(CuTest* tc)
@@ -348,14 +382,13 @@ static void test_json_read_list_of_empty_lists(CuTest* tc)
    av = (dtl_av_t*) result;
    CuAssertIntEquals(tc, 3, dtl_av_length(av));
    dtl_dv_delete(result);
-
 }
 
 static void test_json_read_list_of_list_i32(CuTest* tc)
 {
    dtl_dv_t *result;
    dtl_av_t *av;
-   dtl_av_t *innerArray;
+   dtl_av_t *inner_array;
    dtl_sv_t *sv;
    const char *input1 = "[ [1, 2, 3], [4] ]";
    bool ok;
@@ -365,29 +398,28 @@ static void test_json_read_list_of_list_i32(CuTest* tc)
    CuAssertIntEquals(tc, DTL_DV_ARRAY, dtl_dv_type(result));
    av = (dtl_av_t*) result;
    CuAssertIntEquals(tc, 2, dtl_av_length(av));
-   innerArray = (dtl_av_t*) dtl_av_value(av, 0);
-   CuAssertIntEquals(tc, DTL_DV_ARRAY, dtl_dv_type((dtl_dv_t*) innerArray));
-   CuAssertIntEquals(tc, 3, dtl_av_length(innerArray));
-   sv = (dtl_sv_t*) dtl_av_value(innerArray, 0);
+   inner_array = (dtl_av_t*) dtl_av_value(av, 0);
+   CuAssertIntEquals(tc, DTL_DV_ARRAY, dtl_dv_type((dtl_dv_t*) inner_array));
+   CuAssertIntEquals(tc, 3, dtl_av_length(inner_array));
+   sv = (dtl_sv_t*) dtl_av_value(inner_array, 0);
    CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type((dtl_dv_t*) sv));
    CuAssertIntEquals(tc, 1, dtl_sv_to_i32(sv, &ok));
    CuAssertTrue(tc, ok);
-   sv = (dtl_sv_t*) dtl_av_value(innerArray, 1);
+   sv = (dtl_sv_t*) dtl_av_value(inner_array, 1);
    CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type((dtl_dv_t*) sv));
    CuAssertIntEquals(tc, 2, dtl_sv_to_i32(sv, &ok));
    CuAssertTrue(tc, ok);
-   sv = (dtl_sv_t*) dtl_av_value(innerArray, 2);
+   sv = (dtl_sv_t*) dtl_av_value(inner_array, 2);
    CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type((dtl_dv_t*) sv));
    CuAssertIntEquals(tc, 3, dtl_sv_to_i32(sv, &ok));
    CuAssertTrue(tc, ok);
-   innerArray = (dtl_av_t*) dtl_av_value(av, 1);
-   CuAssertIntEquals(tc, DTL_DV_ARRAY, dtl_dv_type((dtl_dv_t*) innerArray));
-   sv = (dtl_sv_t*) dtl_av_value(innerArray, 0);
+   inner_array = (dtl_av_t*) dtl_av_value(av, 1);
+   CuAssertIntEquals(tc, DTL_DV_ARRAY, dtl_dv_type((dtl_dv_t*) inner_array));
+   sv = (dtl_sv_t*) dtl_av_value(inner_array, 0);
    CuAssertIntEquals(tc, DTL_DV_SCALAR, dtl_dv_type((dtl_dv_t*) sv));
    CuAssertIntEquals(tc, 4, dtl_sv_to_i32(sv, &ok));
    CuAssertTrue(tc, ok);
    dtl_dv_delete(result);
-
 }
 
 static void test_json_read_empty_object(CuTest* tc)
@@ -456,7 +488,6 @@ static void test_json_read_object(CuTest* tc)
    CuAssertIntEquals(tc, DTL_SV_BOOL, dtl_sv_type(sv));
    CuAssertTrue(tc, dtl_sv_to_bool(sv, &ok));
    dtl_dv_delete(result);
-
 }
 
 static void test_json_read_object_with_array(CuTest* tc)
@@ -516,7 +547,7 @@ static void test_json_read_array_of_objects(CuTest* tc)
    CuAssertIntEquals(tc, 4, dtl_av_length(av));
 
    hv = (dtl_hv_t*) dtl_av_value(av, 0);
-   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type( (dtl_dv_t*) hv));
+   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type((dtl_dv_t*) hv));
    name = (dtl_sv_t*) dtl_hv_get_cstr(hv, "Name");
    value = (dtl_sv_t*) dtl_hv_get_cstr(hv, "Value");
    CuAssertPtrNotNull(tc, name);
@@ -529,7 +560,7 @@ static void test_json_read_array_of_objects(CuTest* tc)
    CuAssertTrue(tc, ok);
 
    hv = (dtl_hv_t*) dtl_av_value(av, 1);
-   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type( (dtl_dv_t*) hv));
+   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type((dtl_dv_t*) hv));
    name = (dtl_sv_t*) dtl_hv_get_cstr(hv, "Name");
    value = (dtl_sv_t*) dtl_hv_get_cstr(hv, "Value");
    CuAssertPtrNotNull(tc, name);
@@ -542,7 +573,7 @@ static void test_json_read_array_of_objects(CuTest* tc)
    CuAssertTrue(tc, ok);
 
    hv = (dtl_hv_t*) dtl_av_value(av, 2);
-   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type( (dtl_dv_t*) hv));
+   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type((dtl_dv_t*) hv));
    name = (dtl_sv_t*) dtl_hv_get_cstr(hv, "Name");
    value = (dtl_sv_t*) dtl_hv_get_cstr(hv, "Value");
    CuAssertPtrNotNull(tc, name);
@@ -555,7 +586,7 @@ static void test_json_read_array_of_objects(CuTest* tc)
    CuAssertTrue(tc, ok);
 
    hv = (dtl_hv_t*) dtl_av_value(av, 3);
-   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type( (dtl_dv_t*) hv));
+   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type((dtl_dv_t*) hv));
    name = (dtl_sv_t*) dtl_hv_get_cstr(hv, "Name");
    value = (dtl_sv_t*) dtl_hv_get_cstr(hv, "Value");
    CuAssertPtrNotNull(tc, name);
@@ -568,4 +599,69 @@ static void test_json_read_array_of_objects(CuTest* tc)
    CuAssertTrue(tc, ok);
 
    dtl_dv_dec_ref(result);
+}
+
+static void test_json_loads(CuTest* tc)
+{
+   adt_str_t *str = adt_str_new_cstr("{\"test\": 42}");
+   CuAssertPtrNotNull(tc, str);
+
+   dtl_dv_t *result = dtl_json_loads(str);
+   CuAssertPtrNotNull(tc, result);
+   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type(result));
+
+   dtl_hv_t *hv = (dtl_hv_t*) result;
+   dtl_sv_t *sv = (dtl_sv_t*) dtl_hv_get_cstr(hv, "test");
+   CuAssertPtrNotNull(tc, sv);
+   CuAssertIntEquals(tc, 42, dtl_sv_to_i32(sv, NULL));
+
+   dtl_dec_ref(result);
+   adt_str_delete(str);
+}
+
+static void test_json_load_file(CuTest* tc)
+{
+   const char *filename = "test_read_file.json";
+   FILE *fh = fopen(filename, "w");
+   CuAssertPtrNotNull(tc, fh);
+   fputs("{\"file_key\": \"file_value\", \"number\": 100}", fh);
+   fclose(fh);
+
+   fh = fopen(filename, "r");
+   CuAssertPtrNotNull(tc, fh);
+   dtl_dv_t *result = dtl_json_load(fh);
+   fclose(fh);
+   remove(filename);
+
+   CuAssertPtrNotNull(tc, result);
+   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type(result));
+   dtl_hv_t *hv = (dtl_hv_t*) result;
+   dtl_sv_t *sv_str = (dtl_sv_t*) dtl_hv_get_cstr(hv, "file_key");
+   CuAssertPtrNotNull(tc, sv_str);
+   CuAssertStrEquals(tc, "file_value", dtl_sv_to_cstr(sv_str, NULL));
+
+   dtl_sv_t *sv_num = (dtl_sv_t*) dtl_hv_get_cstr(hv, "number");
+   CuAssertPtrNotNull(tc, sv_num);
+   CuAssertIntEquals(tc, 100, dtl_sv_to_i32(sv_num, NULL));
+
+   dtl_dec_ref(result);
+}
+
+static void test_json_read_errors(CuTest* tc)
+{
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_cstr(""));
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_cstr("bad_token"));
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_cstr("\"unterminated"));
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_cstr("[1, 2,"));
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_cstr("{\"key\": }"));
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_cstr("{: 123}"));
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_cstr("[1, 2}"));
+}
+
+static void test_json_read_null_args(CuTest* tc)
+{
+   CuAssertPtrEquals(tc, NULL, dtl_json_load(NULL));
+   CuAssertPtrEquals(tc, NULL, dtl_json_loads(NULL));
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_cstr(NULL));
+   CuAssertPtrEquals(tc, NULL, dtl_json_load_bstr(NULL, NULL));
 }
