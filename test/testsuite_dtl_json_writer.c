@@ -2,32 +2,19 @@
 * \file      testsuite_dtl_json_writer.c
 * \author    Conny Gustafsson
 * \date      2019-07-02
-* \brief     Unit tests for dtl_json
+* \brief     Unit tests for dtl_json writer
 *
-* Copyright (c) 2019 Conny Gustafsson
-* Permission is hereby granted, free of charge, to any person obtaining a copy of
-* this software and associated documentation files (the "Software"), to deal in
-* the Software without restriction, including without limitation the rights to
-* use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-* the Software, and to permit persons to whom the Software is furnished to do so,
-* subject to the following conditions:
-
-* The above copyright notice and this permission notice shall be included in all
-* copies or substantial portions of the Software.
-
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-* FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-* COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-* IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*
+* Copyright (c) 2019-2026 Conny Gustafsson
+* SPDX-License-Identifier: MIT
+* See LICENSE in project root for full license terms.
 ******************************************************************************/
+
 //////////////////////////////////////////////////////////////////////////////
 // INCLUDES
 //////////////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "dtl_type.h"
 #include "CuTest.h"
 #include "dtl_json.h"
@@ -37,19 +24,14 @@
 #include "CMemLeak.h"
 #endif
 
-
-//////////////////////////////////////////////////////////////////////////////
-// PRIVATE CONSTANTS AND DATA TYPES
-//////////////////////////////////////////////////////////////////////////////
-
-
 //////////////////////////////////////////////////////////////////////////////
 // PRIVATE FUNCTION PROTOTYPES
 //////////////////////////////////////////////////////////////////////////////
-
 static void test_json_write_true(CuTest* tc);
 static void test_json_write_false(CuTest* tc);
+static void test_json_write_null(CuTest* tc);
 static void test_json_write_i32(CuTest* tc);
+static void test_json_write_i64(CuTest* tc);
 static void test_json_write_i32_list_no_indent(CuTest* tc);
 static void test_json_write_i32_list_with_indent(CuTest* tc);
 static void test_json_write_i32_list_inside_list_with_indent(CuTest* tc);
@@ -64,11 +46,8 @@ static void test_json_write_string(CuTest* tc);
 static void test_json_write_string_list_no_indent(CuTest* tc);
 static void test_json_write_string_list_with_indent(CuTest* tc);
 static void test_json_write_utf8_string_list_with_indent(CuTest* tc);
-
-
-//////////////////////////////////////////////////////////////////////////////
-// PRIVATE VARIABLES
-//////////////////////////////////////////////////////////////////////////////
+static void test_json_dump_file(CuTest* tc);
+static void test_json_write_null_args(CuTest* tc);
 
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
@@ -79,7 +58,9 @@ CuSuite* testsuite_dtl_json_writer(void)
 
    SUITE_ADD_TEST(suite, test_json_write_true);
    SUITE_ADD_TEST(suite, test_json_write_false);
+   SUITE_ADD_TEST(suite, test_json_write_null);
    SUITE_ADD_TEST(suite, test_json_write_i32);
+   SUITE_ADD_TEST(suite, test_json_write_i64);
    SUITE_ADD_TEST(suite, test_json_write_i32_list_no_indent);
    SUITE_ADD_TEST(suite, test_json_write_i32_list_with_indent);
    SUITE_ADD_TEST(suite, test_json_write_i32_list_inside_list_with_indent);
@@ -94,7 +75,8 @@ CuSuite* testsuite_dtl_json_writer(void)
    SUITE_ADD_TEST(suite, test_json_write_string_list_no_indent);
    SUITE_ADD_TEST(suite, test_json_write_string_list_with_indent);
    SUITE_ADD_TEST(suite, test_json_write_utf8_string_list_with_indent);
-
+   SUITE_ADD_TEST(suite, test_json_dump_file);
+   SUITE_ADD_TEST(suite, test_json_write_null_args);
 
    return suite;
 }
@@ -129,6 +111,26 @@ static void test_json_write_false(CuTest* tc)
    CuAssertPtrNotNull(tc, output);
    CuAssertStrEquals(tc, "false", adt_str_cstr(output));
    dtl_sv_delete(sv);
+   adt_str_delete(output);
+}
+
+static void test_json_write_null(CuTest* tc)
+{
+   const int indent = 0;
+   dtl_sv_t *sv = dtl_sv_none();
+   CuAssertPtrNotNull(tc, sv);
+   adt_str_t *output = dtl_json_dumps((dtl_dv_t*) sv, indent, false);
+   CuAssertPtrNotNull(tc, output);
+   CuAssertStrEquals(tc, "null", adt_str_cstr(output));
+   dtl_dec_ref(sv);
+   adt_str_delete(output);
+
+   dtl_dv_t *dv_null = dtl_dv_null();
+   CuAssertPtrNotNull(tc, dv_null);
+   output = dtl_json_dumps(dv_null, indent, false);
+   CuAssertPtrNotNull(tc, output);
+   CuAssertStrEquals(tc, "null", adt_str_cstr(output));
+   dtl_dv_delete(dv_null);
    adt_str_delete(output);
 }
 
@@ -176,6 +178,26 @@ static void test_json_write_i32(CuTest* tc)
    dtl_sv_delete(sv);
 }
 
+static void test_json_write_i64(CuTest* tc)
+{
+   const int indent = 0;
+   dtl_sv_t *sv = dtl_sv_make_i64(-2147483649LL);
+   CuAssertPtrNotNull(tc, sv);
+   adt_str_t *output = dtl_json_dumps((dtl_dv_t*) sv, indent, false);
+   CuAssertPtrNotNull(tc, output);
+   CuAssertStrEquals(tc, "-2147483649", adt_str_cstr(output));
+   dtl_sv_delete(sv);
+   adt_str_delete(output);
+
+   sv = dtl_sv_make_u64(9999999999ULL);
+   CuAssertPtrNotNull(tc, sv);
+   output = dtl_json_dumps((dtl_dv_t*) sv, indent, false);
+   CuAssertPtrNotNull(tc, output);
+   CuAssertStrEquals(tc, "9999999999", adt_str_cstr(output));
+   dtl_sv_delete(sv);
+   adt_str_delete(output);
+}
+
 static void test_json_write_i32_list_no_indent(CuTest* tc)
 {
    const int indent = 0;
@@ -185,7 +207,7 @@ static void test_json_write_i32_list_no_indent(CuTest* tc)
 
    av = dtl_av_new();
    CuAssertPtrNotNull(tc, av);
-   for(i=0; i<10; i++)
+   for (i = 0; i < 10; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_i32(i);
       CuAssertPtrNotNull(tc, sv);
@@ -196,7 +218,6 @@ static void test_json_write_i32_list_no_indent(CuTest* tc)
    CuAssertStrEquals(tc, "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]", adt_str_cstr(output));
    dtl_av_delete(av);
    adt_str_delete(output);
-
 }
 
 static void test_json_write_i32_list_with_indent(CuTest* tc)
@@ -220,7 +241,7 @@ static void test_json_write_i32_list_with_indent(CuTest* tc)
 
    av = dtl_av_new();
    CuAssertPtrNotNull(tc, av);
-   for(i=0; i<10; i++)
+   for (i = 0; i < 10; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_i32(i);
       CuAssertPtrNotNull(tc, sv);
@@ -239,10 +260,10 @@ static void test_json_write_i32_list_inside_list_with_indent(CuTest* tc)
    const int indent = 3;
    int32_t i;
    dtl_av_t *av;
-   dtl_av_t *innerList1;
-   dtl_av_t *innerList2;
-   dtl_av_t *innerList3;
-   dtl_av_t *innerList4;
+   dtl_av_t *inner_list1;
+   dtl_av_t *inner_list2;
+   dtl_av_t *inner_list3;
+   dtl_av_t *inner_list4;
    adt_str_t *output;
    const char *expected = "[\n"
          "   [\n"
@@ -265,53 +286,46 @@ static void test_json_write_i32_list_inside_list_with_indent(CuTest* tc)
          "   ]\n"
          "]";
 
-   innerList1 = dtl_av_new();
-   innerList2 = dtl_av_new();
-   innerList3 = dtl_av_new();
-   innerList4 = dtl_av_new();
+   inner_list1 = dtl_av_new();
+   inner_list2 = dtl_av_new();
+   inner_list3 = dtl_av_new();
+   inner_list4 = dtl_av_new();
    av = dtl_av_new();
-   CuAssertPtrNotNull(tc, innerList1);
-   CuAssertPtrNotNull(tc, innerList2);
-   CuAssertPtrNotNull(tc, innerList3);
-   CuAssertPtrNotNull(tc, innerList4);
+   CuAssertPtrNotNull(tc, inner_list1);
+   CuAssertPtrNotNull(tc, inner_list2);
+   CuAssertPtrNotNull(tc, inner_list3);
+   CuAssertPtrNotNull(tc, inner_list4);
    CuAssertPtrNotNull(tc, av);
-   for(i=0; i<3; i++)
+   for (i = 0; i < 3; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_i32(i);
       CuAssertPtrNotNull(tc, sv);
-      dtl_av_push(innerList1, (dtl_dv_t*) sv, false);
+      dtl_av_push(inner_list1, (dtl_dv_t*) sv, false);
    }
-   for(i=3; i<6; i++)
+   for (i = 3; i < 6; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_i32(i);
       CuAssertPtrNotNull(tc, sv);
-      dtl_av_push(innerList2, (dtl_dv_t*) sv, false);
+      dtl_av_push(inner_list2, (dtl_dv_t*) sv, false);
    }
-   for(i=8; i<10; i++)
+   for (i = 8; i < 10; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_i32(i);
       CuAssertPtrNotNull(tc, sv);
-      dtl_av_push(innerList4, (dtl_dv_t*) sv, false);
+      dtl_av_push(inner_list4, (dtl_dv_t*) sv, false);
    }
-   dtl_av_push(innerList3, (dtl_dv_t*) dtl_sv_make_i32(6), false);
-   dtl_av_push(innerList3, (dtl_dv_t*) dtl_sv_make_i32(7), false);
-   dtl_av_push(innerList3,  (dtl_dv_t*) innerList4, false);
-   dtl_av_push(av, (dtl_dv_t*) innerList1, false);
-   dtl_av_push(av, (dtl_dv_t*) innerList2, false);
-   dtl_av_push(av, (dtl_dv_t*) innerList3, false);
+   dtl_av_push(inner_list3, (dtl_dv_t*) dtl_sv_make_i32(6), false);
+   dtl_av_push(inner_list3, (dtl_dv_t*) dtl_sv_make_i32(7), false);
+   dtl_av_push(inner_list3, (dtl_dv_t*) inner_list4, false);
+   dtl_av_push(av, (dtl_dv_t*) inner_list1, false);
+   dtl_av_push(av, (dtl_dv_t*) inner_list2, false);
+   dtl_av_push(av, (dtl_dv_t*) inner_list3, false);
    output = dtl_json_dumps((dtl_dv_t*) av, indent, false);
    CuAssertPtrNotNull(tc, output);
    CuAssertStrEquals(tc, expected, adt_str_cstr(output));
 
-   /*
-   FILE *fh = fopen("test.json", "w");
-   dtl_json_dump((dtl_dv_t*) av, fh, indent);
-   fclose(fh);
-   */
-
    dtl_av_delete(av);
    adt_str_delete(output);
-
 }
 
 static void test_json_write_i32_list_inside_list_no_indent(CuTest* tc)
@@ -319,51 +333,50 @@ static void test_json_write_i32_list_inside_list_no_indent(CuTest* tc)
    const int indent = 0;
    int32_t i;
    dtl_av_t *av;
-   dtl_av_t *innerList1;
-   dtl_av_t *innerList2;
-   dtl_av_t *innerList3;
-   dtl_av_t *innerList4;
+   dtl_av_t *inner_list1;
+   dtl_av_t *inner_list2;
+   dtl_av_t *inner_list3;
+   dtl_av_t *inner_list4;
    adt_str_t *output;
    const char *expected = "[[0, 1, 2], [3, 4, 5], [6, 7, [8, 9]]]";
 
-   innerList1 = dtl_av_new();
-   innerList2 = dtl_av_new();
-   innerList3 = dtl_av_new();
-   innerList4 = dtl_av_new();
+   inner_list1 = dtl_av_new();
+   inner_list2 = dtl_av_new();
+   inner_list3 = dtl_av_new();
+   inner_list4 = dtl_av_new();
    av = dtl_av_new();
-   CuAssertPtrNotNull(tc, innerList1);
-   CuAssertPtrNotNull(tc, innerList2);
-   CuAssertPtrNotNull(tc, innerList3);
-   CuAssertPtrNotNull(tc, innerList4);
+   CuAssertPtrNotNull(tc, inner_list1);
+   CuAssertPtrNotNull(tc, inner_list2);
+   CuAssertPtrNotNull(tc, inner_list3);
+   CuAssertPtrNotNull(tc, inner_list4);
    CuAssertPtrNotNull(tc, av);
-   for(i=0; i<3; i++)
+   for (i = 0; i < 3; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_i32(i);
       CuAssertPtrNotNull(tc, sv);
-      dtl_av_push(innerList1, (dtl_dv_t*) sv, false);
+      dtl_av_push(inner_list1, (dtl_dv_t*) sv, false);
    }
-   for(i=3; i<6; i++)
+   for (i = 3; i < 6; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_i32(i);
       CuAssertPtrNotNull(tc, sv);
-      dtl_av_push(innerList2, (dtl_dv_t*) sv, false);
+      dtl_av_push(inner_list2, (dtl_dv_t*) sv, false);
    }
-   for(i=8; i<10; i++)
+   for (i = 8; i < 10; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_i32(i);
       CuAssertPtrNotNull(tc, sv);
-      dtl_av_push(innerList4, (dtl_dv_t*) sv, false);
+      dtl_av_push(inner_list4, (dtl_dv_t*) sv, false);
    }
-   dtl_av_push(innerList3, (dtl_dv_t*) dtl_sv_make_i32(6), false);
-   dtl_av_push(innerList3, (dtl_dv_t*) dtl_sv_make_i32(7), false);
-   dtl_av_push(innerList3,  (dtl_dv_t*) innerList4, false);
-   dtl_av_push(av, (dtl_dv_t*) innerList1, false);
-   dtl_av_push(av, (dtl_dv_t*) innerList2, false);
-   dtl_av_push(av, (dtl_dv_t*) innerList3, false);
+   dtl_av_push(inner_list3, (dtl_dv_t*) dtl_sv_make_i32(6), false);
+   dtl_av_push(inner_list3, (dtl_dv_t*) dtl_sv_make_i32(7), false);
+   dtl_av_push(inner_list3, (dtl_dv_t*) inner_list4, false);
+   dtl_av_push(av, (dtl_dv_t*) inner_list1, false);
+   dtl_av_push(av, (dtl_dv_t*) inner_list2, false);
+   dtl_av_push(av, (dtl_dv_t*) inner_list3, false);
    output = dtl_json_dumps((dtl_dv_t*) av, indent, false);
    CuAssertPtrNotNull(tc, output);
    CuAssertStrEquals(tc, expected, adt_str_cstr(output));
-
 
    dtl_av_delete(av);
    adt_str_delete(output);
@@ -401,7 +414,7 @@ static void test_json_write_u32_list_no_indent(CuTest* tc)
 
    av = dtl_av_new();
    CuAssertPtrNotNull(tc, av);
-   for(i=0; i<5; i++)
+   for (i = 0; i < 5; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_u32(UINT32_MAX);
       CuAssertPtrNotNull(tc, sv);
@@ -423,7 +436,7 @@ static void test_json_write_u32_list_with_indent(CuTest* tc)
 
    av = dtl_av_new();
    CuAssertPtrNotNull(tc, av);
-   for(i=0; i<5; i++)
+   for (i = 0; i < 5; i++)
    {
       dtl_sv_t *sv = dtl_sv_make_u32(UINT32_MAX);
       CuAssertPtrNotNull(tc, sv);
@@ -441,7 +454,6 @@ static void test_json_write_u32_list_with_indent(CuTest* tc)
    dtl_av_delete(av);
    adt_str_delete(output);
 }
-
 
 static void test_json_write_small_object_no_indent(CuTest* tc)
 {
@@ -520,8 +532,6 @@ static void test_json_write_small_objects_with_indent(CuTest* tc)
    CuAssertPtrNotNull(tc, output);
    CuAssertStrEquals(tc, expected, adt_str_cstr(output));
 
-
-
    dtl_hv_delete(hv);
    adt_str_delete(output);
 }
@@ -544,8 +554,6 @@ static void test_json_write_string(CuTest* tc)
    adt_str_delete(output);
 }
 
-
-
 static void test_json_write_string_list_no_indent(CuTest* tc)
 {
    const int indent = 0;
@@ -558,7 +566,6 @@ static void test_json_write_string_list_no_indent(CuTest* tc)
    dtl_av_push(av, (dtl_dv_t*) dtl_sv_make_cstr("Test 1"), false);
    dtl_av_push(av, (dtl_dv_t*) dtl_sv_make_cstr("Test 2"), false);
    dtl_av_push(av, (dtl_dv_t*) dtl_sv_make_cstr("Test 3"), false);
-
 
    output = dtl_json_dumps((dtl_dv_t*) av, indent, false);
    CuAssertPtrNotNull(tc, output);
@@ -584,7 +591,6 @@ static void test_json_write_string_list_with_indent(CuTest* tc)
    dtl_av_push(av, (dtl_dv_t*) dtl_sv_make_cstr("Test 1"), false);
    dtl_av_push(av, (dtl_dv_t*) dtl_sv_make_cstr("Test 2"), false);
    dtl_av_push(av, (dtl_dv_t*) dtl_sv_make_cstr("Test 3"), false);
-
 
    output = dtl_json_dumps((dtl_dv_t*) av, indent, false);
    CuAssertPtrNotNull(tc, output);
@@ -620,12 +626,47 @@ static void test_json_write_utf8_string_list_with_indent(CuTest* tc)
    CuAssertPtrNotNull(tc, output);
    CuAssertStrEquals(tc, expected, adt_str_cstr(output));
 
-/*
-      FILE *fh = fopen("test.json", "w");
-      dtl_json_dump((dtl_dv_t*) av, fh, indent);
-      fclose(fh);
-*/
-
    dtl_av_delete(av);
    adt_str_delete(output);
+}
+
+static void test_json_dump_file(CuTest* tc)
+{
+   const char *filename = "test_dump_file.json";
+   FILE *fh = fopen(filename, "w");
+   CuAssertPtrNotNull(tc, fh);
+
+   dtl_hv_t *hv = dtl_hv_new();
+   dtl_hv_set_cstr(hv, "name", (dtl_dv_t*) dtl_sv_make_cstr("dump_test"), false);
+   dtl_hv_set_cstr(hv, "count", (dtl_dv_t*) dtl_sv_make_i32(10), false);
+
+   int32_t res = dtl_json_dump((dtl_dv_t*) hv, fh, 0, true);
+   CuAssertIntEquals(tc, 0, res);
+   fclose(fh);
+   dtl_dec_ref(hv);
+
+   fh = fopen(filename, "r");
+   CuAssertPtrNotNull(tc, fh);
+   dtl_dv_t *loaded = dtl_json_load(fh);
+   fclose(fh);
+   remove(filename);
+
+   CuAssertPtrNotNull(tc, loaded);
+   CuAssertIntEquals(tc, DTL_DV_HASH, dtl_dv_type(loaded));
+   dtl_hv_t *loaded_hv = (dtl_hv_t*) loaded;
+   dtl_sv_t *name = (dtl_sv_t*) dtl_hv_get_cstr(loaded_hv, "name");
+   CuAssertPtrNotNull(tc, name);
+   CuAssertStrEquals(tc, "dump_test", dtl_sv_to_cstr(name, NULL));
+
+   dtl_sv_t *count = (dtl_sv_t*) dtl_hv_get_cstr(loaded_hv, "count");
+   CuAssertPtrNotNull(tc, count);
+   CuAssertIntEquals(tc, 10, dtl_sv_to_i32(count, NULL));
+
+   dtl_dec_ref(loaded);
+}
+
+static void test_json_write_null_args(CuTest* tc)
+{
+   CuAssertPtrEquals(tc, NULL, dtl_json_dumps(NULL, 0, false));
+   CuAssertTrue(tc, dtl_json_dump(NULL, NULL, 0, false) != 0);
 }

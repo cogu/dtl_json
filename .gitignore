@@ -1,5 +1,9 @@
 CMemLeak.txt
 **/Debug/
 **/Release/
-/build/
-language.settings.xml
+build/
+build-*/
+.vscode/
+state_pop.json
+books.json
+test_*.json
