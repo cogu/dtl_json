@@ -1,7 +1,7 @@
-dtl_json
+dtl-json
 ========
 
-**dtl_json** is a lightweight, high-performance JSON parser and serializer written in C (C99 and later). It is built directly on top of the `dtl-type <https://github.com/cogu/dtl-type>`_ dynamic type system and provides seamless bidirectional conversion between JSON documents and reference-counted dynamic value trees.
+**dtl-json** is a lightweight, high-performance JSON parser and serializer written in C (C99 and later). It is built directly on top of the `dtl-type <https://github.com/cogu/dtl-type>`_ dynamic type system and provides seamless bidirectional conversion between JSON documents and reference-counted dynamic value trees.
 
 Features
 --------
@@ -88,7 +88,7 @@ The following snippet demonstrates building a dynamic hash map and serializing i
 Components Catalog
 ==================
 
-Below is a summary of the module provided by the dtl_json library:
+Below is a summary of the module provided by the dtl-json library:
 
 .. list-table::
    :header-rows: 1

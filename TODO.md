@@ -7,7 +7,7 @@ This document tracks identified architectural enhancements, error handling redes
 ## 1. Redesign `dtl_json_error_t` to Extend `dtl_error_t`
 
 ### Background
-Currently, [include/dtl_json.h](file:///home/cogu/repo/dtl_json/include/dtl_json.h) defines its own set of error codes starting from index 0:
+Currently, [include/dtl_json.h](file:///home/cogu/repo/dtl-json/include/dtl_json.h) defines its own set of error codes starting from index 0:
 
 ```c
 typedef int32_t dtl_json_error_t;
@@ -61,9 +61,9 @@ Unify the error type hierarchy by having `dtl_json_error_t` extend `dtl_error_t`
    ```
 
 ### Tasks
-- [ ] Redefine `dtl_json_error_t` as `dtl_error_t` in [include/dtl_json.h](file:///home/cogu/repo/dtl_json/include/dtl_json.h).
+- [ ] Redefine `dtl_json_error_t` as `dtl_error_t` in [include/dtl_json.h](file:///home/cogu/repo/dtl-json/include/dtl_json.h).
 - [ ] Rebase JSON parser error codes with a dedicated offset to eliminate collisions with core `dtl_error_t`.
-- [ ] Update [src/dtl_json_reader.c](file:///home/cogu/repo/dtl_json/src/dtl_json_reader.c) to use the updated error definitions.
+- [ ] Update [src/dtl_json_reader.c](file:///home/cogu/repo/dtl-json/src/dtl_json_reader.c) to use the updated error definitions.
 - [ ] Implement `dtl_json_error_str` in `src/dtl_json_reader.c` and declare it in `include/dtl_json.h`.
 - [ ] Add unit tests verifying error code values and string formatting.
 
@@ -72,9 +72,9 @@ Unify the error type hierarchy by having `dtl_json_error_t` extend `dtl_error_t`
 ## 2. Expose Parser Diagnostics & Error Reporting to Callers
 
 ### Background
-Currently, the public loader functions ([dtl_json_load](file:///home/cogu/repo/dtl_json/include/dtl_json.h#L66), `dtl_json_loads`, `dtl_json_load_cstr`, `dtl_json_load_bstr`) return `NULL` on failure without providing the caller with any indication of why or where parsing failed.
+Currently, the public loader functions ([dtl_json_load](file:///home/cogu/repo/dtl-json/include/dtl_json.h#L66), `dtl_json_loads`, `dtl_json_load_cstr`, `dtl_json_load_bstr`) return `NULL` on failure without providing the caller with any indication of why or where parsing failed.
 
-Internally, `dtl_json_reader_t` in [src/dtl_json_reader.c](file:///home/cogu/repo/dtl_json/src/dtl_json_reader.c#L65-L66) already tracks:
+Internally, `dtl_json_reader_t` in [src/dtl_json_reader.c](file:///home/cogu/repo/dtl-json/src/dtl_json_reader.c#L65-L66) already tracks:
 * `dtl_json_error_t last_error;`
 * `uint32_t line_number;`
 
@@ -108,8 +108,8 @@ Introduce a diagnostics struct and extended parser functions (or out-parameter s
    Enhance `dtl_json_reader_t` to track column offset within the line for precise syntax error reporting.
 
 ### Tasks
-- [ ] Define `dtl_json_error_info_t` in [include/dtl_json.h](file:///home/cogu/repo/dtl_json/include/dtl_json.h).
-- [ ] Add column tracking in [src/dtl_json_reader.c](file:///home/cogu/repo/dtl_json/src/dtl_json_reader.c).
+- [ ] Define `dtl_json_error_info_t` in [include/dtl_json.h](file:///home/cogu/repo/dtl-json/include/dtl_json.h).
+- [ ] Add column tracking in [src/dtl_json_reader.c](file:///home/cogu/repo/dtl-json/src/dtl_json_reader.c).
 - [ ] Implement `*_ext` parser variants with optional `dtl_json_error_info_t *` parameter.
 - [ ] Add unit tests verifying line number, column, and error code reporting on malformed JSON inputs.
 
@@ -133,6 +133,6 @@ The current API has asymmetric error handling styles:
 
 ## 4. Repository & Documentation Updates
 
-- [ ] Rename repository and references to `dtl-json` once GitHub repo rename occurs.
-- [ ] Update [README.md](file:///home/cogu/repo/dtl_json/README.md) to reflect `dtl-json` and `dtl-type`.
-- [ ] Update Sphinx documentation `project = 'dtl-json'` in [docs/conf.py](file:///home/cogu/repo/dtl_json/docs/conf.py) and [docs/Doxyfile](file:///home/cogu/repo/dtl_json/docs/Doxyfile).
+- [x] Rename repository and references to `dtl-json` once GitHub repo rename occurs.
+- [x] Update [README.md](file:///home/cogu/repo/dtl-json/README.md) to reflect `dtl-json` and `dtl-type`.
+- [x] Update Sphinx documentation `project = 'dtl-json'` in [docs/conf.py](file:///home/cogu/repo/dtl-json/docs/conf.py) and [docs/Doxyfile](file:///home/cogu/repo/dtl-json/docs/Doxyfile).

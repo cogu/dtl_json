@@ -1,7 +1,7 @@
-![unit tests](https://github.com/cogu/dtl_json/workflows/unit%20tests/badge.svg)
+![unit tests](https://github.com/cogu/dtl-json/workflows/unit%20tests/badge.svg)
 
-# dtl_json
-This is a JSON parser and writer library built on top of [dtl_type](https://github.com/cogu/dtl_type).
+# dtl-json
+This is a JSON parser and writer library built on top of [dtl-type](https://github.com/cogu/dtl-type).
 
 ## Where is it used?
 
@@ -13,7 +13,7 @@ This repo is a submodule of the [cogu/c-apx](https://github.com/cogu/c-apx) (top
 
 * [cogu/adt](https://github.com/cogu/adt)
 * [cogu/bstr](https://github.com/cogu/bstr)
-* [cogu/dtl_type](https://github.com/cogu/dtl_type)
+* [cogu/dtl-type](https://github.com/cogu/dtl-type)
 * [cogu/cutil](https://github.com/cogu/cutil)
 
 The unit test project(s) assume that the repos are cloned side-by-side to a common directory as seen below.
@@ -21,8 +21,8 @@ The unit test project(s) assume that the repos are cloned side-by-side to a comm
 * adt
 * bstr
 * cutil
-* dtl_type
-* dtl_json (this repo)
+* dtl-type
+* dtl-json (this repo)
 
 ### Git Example
 
@@ -32,9 +32,9 @@ mkdir repo && cd repo
 git clone https://github.com/cogu/adt.git
 git clone https://github.com/cogu/bstr.git
 git clone https://github.com/cogu/cutil.git
-git clone https://github.com/cogu/dtl_type.git
-git clone https://github.com/cogu/dtl_json.git
-cd dtl_json
+git clone https://github.com/cogu/dtl-type.git
+git clone https://github.com/cogu/dtl-json.git
+cd dtl-json
 ```
 
 ## Building with CMake

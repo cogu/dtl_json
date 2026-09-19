@@ -47,7 +47,7 @@ jobs:
         repository: cogu/dtl-type
         path: dtl-type
 
-    - name: checkout dtl_json
+    - name: checkout dtl-json
       uses: actions/checkout@v4
       with:
         path: main

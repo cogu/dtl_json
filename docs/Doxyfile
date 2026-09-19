@@ -1,5 +1,5 @@
 # Doxyfile for Sphinx + Breathe integration
-PROJECT_NAME           = "dtl_json"
+PROJECT_NAME           = "dtl-json"
 PROJECT_NUMBER         = "0.3.0"
 PROJECT_BRIEF          = "DTL-powered JSON parser and writer for C"
 

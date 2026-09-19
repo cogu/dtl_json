@@ -9,7 +9,7 @@ import subprocess
 
 # -- Project information -----------------------------------------------------
 
-project = 'dtl_json'
+project = 'dtl-json'
 copyright = '2026, Conny Gustafsson'
 author = 'Conny Gustafsson'
 release = '0.3.0'
@@ -29,9 +29,9 @@ primary_domain = 'c'
 # -- Breathe configuration ---------------------------------------------------
 
 breathe_projects = {
-    'dtl_json': '_build/doxygen/xml',
+    'dtl-json': '_build/doxygen/xml',
 }
-breathe_default_project = 'dtl_json'
+breathe_default_project = 'dtl-json'
 breathe_domain_by_extension = {
     'h': 'c',
 }
