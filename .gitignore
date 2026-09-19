@@ -7,3 +7,7 @@ build-*/
 state_pop.json
 books.json
 test_*.json
+
+# Sphinx documentation
+/docs/_build/
+**/.venv/
