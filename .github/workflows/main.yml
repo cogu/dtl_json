@@ -41,11 +41,11 @@ jobs:
         repository: cogu/cutil
         path: cutil
 
-    - name: checkout dtl_type
+    - name: checkout dtl-type
       uses: actions/checkout@v4
       with:
-        repository: cogu/dtl_type
-        path: dtl_type
+        repository: cogu/dtl-type
+        path: dtl-type
 
     - name: checkout dtl_json
       uses: actions/checkout@v4
