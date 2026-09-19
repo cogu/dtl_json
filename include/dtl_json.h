@@ -47,9 +47,9 @@ typedef int32_t dtl_json_error_t;
  * \param fh File handle open for writing.
  * \param indent Number of spaces to use for indentation. Set to 0 or negative for compact output.
  * \param sort_keys If true, object keys are sorted alphabetically before writing.
- * \return 0 on success, or non-zero error code.
+ * \return DTL_NO_ERROR (0) on success, or non-zero error code.
  */
-int32_t dtl_json_dump(const dtl_dv_t *dv, FILE *fh, int32_t indent, bool sort_keys);
+dtl_error_t dtl_json_dump(const dtl_dv_t *dv, FILE *fh, int32_t indent, bool sort_keys);
 
 /**
  * \brief Dumps a dynamic value as JSON into a newly allocated string.

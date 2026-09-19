@@ -640,8 +640,8 @@ static void test_json_dump_file(CuTest* tc)
    dtl_hv_set_cstr(hv, "name", (dtl_dv_t*) dtl_sv_make_cstr("dump_test"), false);
    dtl_hv_set_cstr(hv, "count", (dtl_dv_t*) dtl_sv_make_i32(10), false);
 
-   int32_t res = dtl_json_dump((dtl_dv_t*) hv, fh, 0, true);
-   CuAssertIntEquals(tc, 0, res);
+   dtl_error_t res = dtl_json_dump((dtl_dv_t*) hv, fh, 0, true);
+   CuAssertIntEquals(tc, DTL_NO_ERROR, res);
    fclose(fh);
    dtl_dec_ref(hv);
 
@@ -668,5 +668,5 @@ static void test_json_dump_file(CuTest* tc)
 static void test_json_write_null_args(CuTest* tc)
 {
    CuAssertPtrEquals(tc, NULL, dtl_json_dumps(NULL, 0, false));
-   CuAssertTrue(tc, dtl_json_dump(NULL, NULL, 0, false) != 0);
+   CuAssertTrue(tc, dtl_json_dump(NULL, NULL, 0, false) != DTL_NO_ERROR);
 }

@@ -68,7 +68,7 @@ static void dtl_json_writer_write_indent_str(dtl_json_writer_t *self);
 //////////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 //////////////////////////////////////////////////////////////////////////////
-int32_t dtl_json_dump(const dtl_dv_t *dv, FILE *fh, int32_t indent, bool sort_keys)
+dtl_error_t dtl_json_dump(const dtl_dv_t *dv, FILE *fh, int32_t indent, bool sort_keys)
 {
    if ((dv == NULL) || (fh == NULL))
    {
@@ -86,7 +86,7 @@ int32_t dtl_json_dump(const dtl_dv_t *dv, FILE *fh, int32_t indent, bool sort_ke
    }
    dtl_error_t result = dtl_json_writer_write_dv(&writer, dv, true);
    dtl_json_writer_destroy(&writer, false);
-   return (int32_t) result;
+   return result;
 }
 
 adt_str_t* dtl_json_dumps(const dtl_dv_t *dv, int32_t indent, bool sort_keys)
